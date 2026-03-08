@@ -2,6 +2,3 @@
 
 # Error tracking
 sentry-sdk[django]==2.19.2
-
-# Prometheus metrics (optional — remove if not needed)
-django-prometheus==2.3.1

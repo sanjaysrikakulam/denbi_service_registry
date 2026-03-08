@@ -46,14 +46,38 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application code
-COPY --chown=django:django . .
+COPY --chown=django:django config/ config/
+COPY --chown=django:django apps/ apps/
+COPY --chown=django:django templates/ templates/
+COPY --chown=django:django static/ static/
+COPY --chown=django:django manage.py manage.py
 
 # Create static file and celery beat directories with correct ownership
 RUN mkdir -p staticfiles mediafiles /var/run/celerybeat \
     && chown -R django:django staticfiles mediafiles /var/run/celerybeat
 
-# Collect static files
-RUN python manage.py collectstatic --noinput || true
+# # Collect static files
+# RUN python manage.py collectstatic --noinput || true
+
+# ---------------------------------------------------------------------------
+# Run collectstatic at build time so static files are baked into the image.
+#
+# collectstatic only reads settings — it does not touch the database or Redis.
+# However settings.py declares SECRET_KEY, DB_PASSWORD, and REDIS_PASSWORD
+# as required=True, so Django will refuse to start without them even for a
+# management command that doesn't use them.
+#
+# We inject throwaway build-time values via ARG so the real secrets are never
+# written into any image layer. ARG values are not persisted after the build.
+# ---------------------------------------------------------------------------
+ARG BUILD_SECRET_KEY="build-time-only-not-a-real-secret-key-do-not-use"
+ARG BUILD_DB_PASSWORD="build-time-placeholder"
+ARG BUILD_REDIS_PASSWORD="build-time-placeholder"
+
+RUN SECRET_KEY="${BUILD_SECRET_KEY}" \
+    DB_PASSWORD="${BUILD_DB_PASSWORD}" \
+    REDIS_PASSWORD="${BUILD_REDIS_PASSWORD}" \
+    python manage.py collectstatic --noinput
 
 USER django
 
@@ -66,9 +90,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
 
 # Default command — overridden per service in docker-compose
 CMD ["gunicorn", "config.wsgi:application", \
-     "--bind", "0.0.0.0:8000", \
-     "--workers", "4", \
-     "--worker-class", "sync", \
-     "--timeout", "60", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-"]
+    "--bind", "0.0.0.0:8000", \
+    "--workers", "4", \
+    "--worker-class", "sync", \
+    "--timeout", "60", \
+    "--access-logfile", "-", \
+    "--error-logfile", "-"]

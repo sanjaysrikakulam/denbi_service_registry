@@ -1,0 +1,108 @@
+# =============================================================================
+# .dockerignore — de.NBI Service Registry
+# =============================================================================
+# Controls what the Docker build daemon sends to the builder as the build
+# context. Keeping this tight:
+#   1. Prevents secrets leaking into image layers.
+#   2. Speeds up `docker build` by shrinking the context sent to the daemon.
+#   3. Prevents cache-busting by files that don't affect the built image.
+#
+# Rule: start by excluding everything, then explicitly allow what is needed.
+# The runtime COPY instructions in the Dockerfile are the final gate —
+# this file is a safety net, not a substitute for explicit COPYs.
+# =============================================================================
+
+# ── Exclude everything by default ─────────────────────────────────────────────
+*
+
+# ── Re-include only what the image needs ──────────────────────────────────────
+
+# Python application source
+!manage.py
+!apps/
+!config/
+!static/
+!templates/
+
+# Python dependency manifests (used in builder stage only,
+# but must be in context for the COPY requirements/ step)
+!requirements/
+
+# ── Within re-included directories, exclude test/dev artefacts ───────────────
+
+# Python cache — always stale from the host, rebuilt inside the image
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# pytest and coverage artefacts
+**/.pytest_cache/
+**/pytest_cache/
+**/.coverage
+**/coverage.xml
+**/htmlcov/
+
+# mypy / ruff caches
+**/.mypy_cache/
+**/.ruff_cache/
+
+# ── Secrets — belt-and-braces (these must NEVER enter any image layer) ────────
+.env
+.env.*
+*.env
+!.env.example
+
+# Vault files (should never be in the repo but guard anyway)
+vault.yml
+*.vault
+
+# ── Development and CI artefacts ──────────────────────────────────────────────
+# (Excluded by the leading * above, but listed explicitly for documentation)
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker files themselves (not needed inside the image)
+Dockerfile*
+docker-compose*.yml
+docker/
+.dockerignore
+
+# Documentation
+docs/
+*.md
+README*
+CHANGELOG*
+
+# Editor and OS artefacts
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test suite
+tests/
+
+# CI configuration
+.github/
+.gitlab-ci.yml
+Jenkinsfile
+.travis.yml
+tox.ini
+
+# Build / packaging artefacts
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Deprecated / dead files
+settings.toml
+
+# Makefile (no use inside the container)
+Makefile

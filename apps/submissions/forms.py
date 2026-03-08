@@ -109,7 +109,7 @@ class SubmissionForm(forms.ModelForm):
             "Comma-separated PMIDs or DOIs. "
             "For ELIXIR impact assessment, PMIDs are required."
         ),
-        widget=forms.Textarea(attrs={"rows": 3}),
+        widget=forms.Textarea(attrs={"rows": 2, "class": "form-control", "placeholder": "e.g. 12345678, 10.1000/xyz123"}),
     )
 
     class Meta:

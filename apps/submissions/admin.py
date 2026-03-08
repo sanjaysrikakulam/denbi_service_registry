@@ -91,7 +91,9 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
     )
     search_fields = (
         "service_name",
-        "submitter_display",
+        "submitter_first_name",
+        "submitter_last_name",
+        "submitter_affiliation",
         "host_institute",
         "responsible_pis__last_name",
         "responsible_pis__first_name",
@@ -182,6 +184,10 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
     ]
 
     # ── List display helpers ──────────────────────────────────────────────────
+
+    @admin.display(description="Submitter", ordering="submitter_last_name")
+    def submitter_display(self, obj):
+        return f"{obj.submitter_last_name}, {obj.submitter_first_name} — {obj.submitter_affiliation}"
 
     @admin.display(description="Service", ordering="service_name")
     def service_name_link(self, obj):

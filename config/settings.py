@@ -382,18 +382,22 @@ CORS_PREFLIGHT_MAX_AGE = 86400
 # ---------------------------------------------------------------------------
 # Content Security Policy
 # ---------------------------------------------------------------------------
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", "https://js.hcaptcha.com", "https://challenges.cloudflare.com")
-CSP_STYLE_SRC = ("'self'", "https://cdn.jsdelivr.net")
-CSP_IMG_SRC = ("'self'", "data:")
-CSP_FONT_SRC = ("'self'",)
-CSP_CONNECT_SRC = ("'self'", "https://hcaptcha.com")
-CSP_FRAME_SRC = ("https://hcaptcha.com", "https://challenges.cloudflare.com")
-CSP_FRAME_ANCESTORS = ("'none'",)
-CSP_FORM_ACTION = ("'self'",)
-CSP_BASE_URI = ("'self'",)
-CSP_OBJECT_SRC = ("'none'",)
-CSP_UPGRADE_INSECURE_REQUESTS = not DEBUG
+CONTENT_SECURITY_POLICY = {
+    "DIRECTIVES": {
+        "default-src":      ("'self'",),
+        "script-src":       ("'self'", "https://js.hcaptcha.com", "https://challenges.cloudflare.com"),
+        "style-src":        ("'self'", "https://cdn.jsdelivr.net"),
+        "img-src":          ("'self'", "data:"),
+        "font-src":         ("'self'",),
+        "connect-src":      ("'self'", "https://hcaptcha.com"),
+        "frame-src":        ("https://hcaptcha.com", "https://challenges.cloudflare.com"),
+        "frame-ancestors":  ("'none'",),
+        "form-action":      ("'self'",),
+        "base-uri":         ("'self'",),
+        "object-src":       ("'none'",),
+        "upgrade-insecure-requests": not DEBUG,
+    },
+}
 
 # ---------------------------------------------------------------------------
 # CAPTCHA
