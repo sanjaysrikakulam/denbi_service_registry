@@ -34,7 +34,7 @@ tagline = "de.NBI & ELIXIR-DE Service Registration System"
 
 # The canonical public URL of this deployment (no trailing slash).
 # Used in emails, API contact info, and the bio.tools client User-Agent.
-url = "https://registry.denbi.de"
+url = "https://service-registry.denbi.de"
 
 # Logo URL.  Three options:
 #   1. An absolute URL:         "https://www.denbi.de/templates/nbimaster/img/denbi-logo-color.svg"
@@ -75,7 +75,7 @@ organisation = "German Network for Bioinformatics Infrastructure"
 from_address = "no-reply@denbi.de"
 
 # Subject prefix prepended to all notification emails.
-subject_prefix = "[de.NBI Registry]"
+subject_prefix = "[de.NBI Service Registry]"
 
 
 # -----------------------------------------------------------------------------
@@ -93,7 +93,7 @@ privacy_policy = "https://www.denbi.de/privacy-policy"
 imprint = "https://www.denbi.de/imprint"
 
 # de.NBI data protection information page (linked in consent section of form).
-data_protection = "https://www.denbi.de/?view=article&id=1968:services-dpi&catid=21"
+data_protection = "https://www.denbi.de/privacy-policy"
 
 # KPI cheat-sheet PDF linked in the KPI section of the form.
 kpi_cheatsheet = "https://www.denbi.de/images/Service/20210624_KPI_Cheat_Sheet_doi.pdf"
