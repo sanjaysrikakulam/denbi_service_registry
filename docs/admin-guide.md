@@ -1,0 +1,303 @@
+# Admin Guide — de.NBI Service Registry
+
+## Accessing the Admin Portal
+
+The admin is available at `/<ADMIN_URL_PREFIX>/` (default: `/admin-denbi/`).
+The URL prefix is configured via the `ADMIN_URL_PREFIX` environment variable in `.env` (default: `admin-denbi`).
+
+Log in with your Django superuser credentials.
+
+---
+
+## Managing Submissions
+
+### Submission List View
+
+The list shows: service name, submitter, status badge, service centre, ELIXIR-DE flag, submission date.
+
+**Filters** (right sidebar): status, category, service centre, ELIXIR-DE flag, date range.
+**Search** (top): service name, submitter name, PI name, host institute.
+
+### Submission Detail View
+
+The detail view shows all form sections A–G plus:
+- Submission metadata (ID, timestamps, IP — IP visible only to superusers)
+- EDAM Topics and EDAM Operations annotations selected by the submitter
+- **bio.tools Record** section (if a bio.tools URL was entered) — see [bio.tools Records](#biotools-records)
+- API key management section at the bottom
+
+### Changing Submission Status
+
+**Individual:** Open a submission, change the Status field, and save. A notification email is automatically sent to the internal contact.
+
+**Bulk:** Select submissions in the list view, then choose an action from the dropdown:
+- Approve selected submissions
+- Reject selected submissions
+- Mark selected as Under Review
+
+### Exporting Submissions
+
+Select submissions → choose **Export selected as CSV** or **Export selected as JSON**.
+Exported files contain public fields only (no internal contact emails).
+
+---
+
+## API Key Management
+
+Each submission detail page shows the **Submission API Keys** section. This shows all keys ever issued, their label, creation date, last-used timestamp, and whether they are active.
+
+### Three admin actions are available:
+
+| Action | What it does |
+|--------|-------------|
+| **Revoke all keys** | Deactivates all active keys. The submitter can no longer edit their submission until a new key is issued. |
+| **Reset key** | Revokes all keys and issues one new one. The new plaintext key is shown **once** in a banner. Communicate it to the submitter securely (e.g. encrypted email, phone). |
+| **Issue additional key** | Creates a new active key alongside existing ones. Useful for CI/CD pipelines or team members. Enter a descriptive label. |
+
+> **Security note:** Key plaintexts are shown once in the admin interface and are never stored anywhere. If you accidentally close the browser before noting the key, you must reset again.
+
+All key operations are logged in Django's admin audit log (History tab on the submission).
+
+---
+
+## Managing Reference Data
+
+### Principal Investigators (PIs)
+
+**Location:** Admin → Reference Data → Principal Investigators
+
+- Add new PIs who are not yet listed.
+- Set `is_active = False` to hide a PI from the form dropdown without removing them from existing submissions.
+- The `is_associated_partner` flag should be `True` for exactly one entry (the generic "Associated partner" option).
+- ORCID iDs are validated on save.
+
+### Service Centres
+
+**Location:** Admin → Reference Data → Service Centers
+
+- Each centre has a short name (e.g. "HD-HuB"), full name, and optional website.
+- `is_active = False` hides from the form but keeps existing submission links intact.
+
+### Service Categories
+
+**Location:** Admin → Reference Data → Service Categories
+
+- Add new category types as needed.
+- `is_active = False` hides from the form.
+
+---
+
+## EDAM Ontology Management {#edam-management}
+
+**Location:** Admin → EDAM Ontology → EDAM Terms
+
+EDAM terms are imported from the official EDAM ontology release and are read-only in the admin.
+You cannot add or delete terms manually — all changes come from the `sync_edam` command.
+
+### Viewing Terms
+
+The list shows: accession (e.g. `topic_0121`), label, branch, obsolete flag, EDAM version.
+
+Filter by **branch** to see only topics, operations, data types, formats, or identifiers.
+Search by label or definition text.
+
+### Checking the Loaded Version
+
+In the admin list, the **EDAM version** column shows which EDAM release each term was last
+loaded from (e.g. `1.25`). All terms should show the same version after a successful sync.
+
+### Updating EDAM Terms
+
+When the EDAM consortium publishes a new release:
+
+```bash
+# Check the current version loaded
+docker compose exec web python manage.py shell -c \
+  "from apps.edam.models import EdamTerm; print(EdamTerm.objects.values('edam_version').distinct())"
+
+# Download and import the new release
+docker compose exec web python manage.py sync_edam
+
+# Or specify a local file (useful if outbound HTTP is blocked)
+docker compose exec web python manage.py sync_edam --url /path/to/EDAM.json
+
+# Dry-run to see counts before writing
+docker compose exec web python manage.py sync_edam --dry-run
+
+# Sync a single branch only
+docker compose exec web python manage.py sync_edam --branch topic
+```
+
+New terms appear immediately in the form. Obsolete terms are hidden from the form but
+retained in the database (so existing submissions referencing them are not broken).
+
+### If the Form Shows No EDAM Terms
+
+The most likely cause is that `sync_edam` was never run. Check:
+
+```bash
+docker compose exec web python manage.py shell -c \
+  "from apps.edam.models import EdamTerm; print(EdamTerm.objects.count())"
+# Should be ~4000. If 0, run: python manage.py sync_edam
+```
+
+---
+
+## bio.tools Record Management {#biotools-records}
+
+When a submitter enters a bio.tools URL, the system automatically fetches and stores a local
+copy of the tool's bio.tools entry. This is displayed in the submission detail view and
+exposed in the API.
+
+### Viewing bio.tools Records
+
+**Location:** Admin → bio.tools Integration → bio.tools Records
+
+Each record shows:
+- The linked submission
+- The bio.tools ID and link to bio.tools
+- Extracted metadata: name, description, license, tool types, maturity
+- EDAM topic URIs sourced from bio.tools
+- Last sync timestamp and any sync error
+
+The **Functions** inline shows all EDAM Operation/Input/Output annotations from bio.tools,
+structured as one row per function block.
+
+### Sync Status
+
+The list view shows a green ✓ or red ✗ for each record's last sync status.
+A red ✗ means the last sync failed — check the **sync_error** field on the record.
+
+Common sync errors:
+- `bio.tools tool not found (HTTP 404)` — the bio.tools ID in the submission URL is wrong
+- `bio.tools network error` — the server could not reach bio.tools (check firewall/proxy)
+- `bio.tools API error (HTTP 5xx)` — bio.tools is temporarily unavailable; will retry automatically
+
+### Manually Triggering a Sync
+
+From the admin list, select records and choose **Sync selected records from bio.tools now**.
+This queues a background Celery task; the record refreshes within a few seconds.
+
+From the command line:
+
+```bash
+# Sync all records
+docker compose exec web python manage.py sync_biotools
+
+# Sync one specific submission
+docker compose exec web python manage.py sync_biotools --submission <uuid>
+
+# Dry-run
+docker compose exec web python manage.py sync_biotools --dry-run
+```
+
+### Creating a bio.tools Record Manually
+
+If a submission has a bio.tools URL but no record was created (e.g. bio.tools was unreachable
+when the submission was saved), create it manually:
+
+```bash
+docker compose exec web python manage.py sync_biotools \
+  --submission <submission-uuid> \
+  --create
+```
+
+### Periodic Sync Schedule
+
+All bio.tools records are refreshed automatically every 24 hours by a Celery beat task.
+To verify the scheduler is running:
+
+```bash
+docker compose exec worker celery -A config inspect scheduled
+# Should show the biotools.sync_all task
+```
+
+To change the schedule, edit `CELERY_BEAT_SCHEDULE` in `config/settings.py`:
+
+```python
+"sync-biotools-daily": {
+    "task": "biotools.sync_all",
+    "schedule": 86400,  # seconds — change to 43200 for twice-daily
+},
+```
+
+---
+
+## Issuing Admin API Tokens
+
+For staff or external systems needing read-all API access:
+
+1. Go to **Admin → Auth Token → Tokens → Add Token**.
+2. Select the staff user and save.
+3. The token value is shown once — copy it immediately.
+4. The consumer uses: `Authorization: Token <token-value>` in API requests.
+
+To revoke: delete the token record from the admin.
+
+---
+
+## Email Notification Settings
+
+Emails are sent asynchronously via Celery. Configure via environment variables in `.env`:
+
+```bash
+EMAIL_HOST=smtp.example.org
+EMAIL_PORT=587
+EMAIL_USE_TLS=true
+EMAIL_FROM=no-reply@denbi.de
+SUBMISSION_NOTIFY_CC=admin@denbi.de          # Optional CC on every notification
+SUBMISSION_NOTIFY_OVERRIDE=                  # Override recipient for testing
+```
+
+Events that trigger emails:
+- New submission created
+- Submission updated by submitter
+- Status changed by admin (approve/reject/review)
+
+---
+
+## Monitoring
+
+### Health Checks
+
+- `GET /health/live/` — 200 if the process is running (no DB check)
+- `GET /health/ready/` — 200 only if DB and Redis are reachable; 503 otherwise
+
+### Logs
+
+Logs are structured JSON on stdout (captured by Docker). Key fields:
+`timestamp`, `levelname`, `name`, `message`, `request_id`.
+
+View live logs:
+```bash
+make logs
+# or
+docker compose logs -f web
+docker compose logs -f worker
+```
+
+### Celery / Task Queue
+
+Check task queue health:
+```bash
+docker compose exec worker celery -A config inspect active
+docker compose exec worker celery -A config inspect stats
+
+# Check scheduled tasks (should include cleanup-stale-drafts and sync-biotools-daily)
+docker compose exec worker celery -A config inspect scheduled
+```
+
+---
+
+## Rotating the SECRET_KEY
+
+1. Generate a new key: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`
+2. Update `SECRET_KEY` in `.env` (or your deployment environment / CI secret store).
+3. Restart the web and worker services: `docker compose restart web worker`
+4. All existing sessions will be invalidated (users will need to log in again).
+
+## Rotating Database Password
+
+1. Update the PostgreSQL password: `docker compose exec db psql -U denbi -c "ALTER USER denbi PASSWORD 'new-password';"`
+2. Update `DB_PASSWORD` in `.env` to the new password.
+3. Restart services: `docker compose restart web worker beat`

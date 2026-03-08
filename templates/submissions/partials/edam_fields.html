@@ -1,0 +1,92 @@
+{% comment %}
+EDAM Ontology Fields — Section B of the registration form.
+
+Two custom tag pickers built by edam-autocomplete.js:
+  edam_topics      — scientific domain (up to 6 terms)
+  edam_operations  — computational operations (up to 6 terms)
+
+The JS reads options from the hidden <select class="edam-autocomplete">,
+renders a pill zone for selected terms, and a debounced search dropdown.
+{% endcomment %}
+
+<div class="mb-4 p-0" id="edam-section">
+
+  {% comment %} bio.tools comparison info (only on edit view) {% endcomment %}
+  {% if form.instance.pk and form.instance.biotoolsrecord %}
+    {% with record=form.instance.biotoolsrecord %}
+    {% if record.edam_topic_uris %}
+    <div class="alert alert-info py-2 mb-3 small">
+      <strong>bio.tools annotations:</strong>
+      {% for uri in record.edam_topic_uris %}
+        <span class="badge bg-info text-dark me-1">{{ uri|slice:"-20:" }}</span>
+      {% endfor %}
+      <span class="text-muted ms-1">(your selection below may differ)</span>
+    </div>
+    {% endif %}
+    {% endwith %}
+  {% endif %}
+
+  <div class="d-flex align-items-start gap-1 mb-3">
+    <div class="flex-grow-1">
+      <h6 class="mb-0 fw-semibold" style="font-size:.875rem">
+        EDAM Ontology Annotations
+        <a href="https://edamontology.org/" target="_blank" rel="noopener"
+           class="ms-1 text-muted" style="font-size:.75rem;font-weight:400">
+          What is EDAM? ↗
+        </a>
+      </h6>
+      <p class="text-muted mb-0" style="font-size:.8rem;margin-top:.2rem">
+        Annotate your service with EDAM terms to improve discoverability in bio.tools, ELIXIR, and EOSC.
+        <strong>Optional — but strongly recommended.</strong>
+      </p>
+    </div>
+  </div>
+
+  {# ── Topics ── #}
+  <div class="mb-4" id="field-wrapper-edam_topics">
+    <label class="form-label fw-semibold" style="font-size:.875rem">
+      EDAM Topics
+    </label>
+    <p class="form-text mb-2" style="margin-top:0">
+      Scientific domain or area of interest.
+      Examples: <em>Proteomics</em>, <em>Genomics</em>, <em>Structural biology</em>
+    </p>
+
+    {# Hidden Django select — JS replaces this with the pill picker #}
+    {{ form.edam_topics }}
+
+    <p class="edam-picker__help" id="edam-topics-help">
+      Type to search ~4,000 EDAM terms · Select up to 6 · ↑↓ keyboard navigation · Backspace removes last
+    </p>
+
+    {% if form.edam_topics.errors %}
+      <div class="invalid-feedback d-block" id="field-errors-edam_topics">
+        {{ form.edam_topics.errors|join:", " }}
+      </div>
+    {% endif %}
+  </div>
+
+  {# ── Operations ── #}
+  <div class="mb-2" id="field-wrapper-edam_operations">
+    <label class="form-label fw-semibold" style="font-size:.875rem">
+      EDAM Operations
+    </label>
+    <p class="form-text mb-2" style="margin-top:0">
+      Computational operations performed by the service.
+      Examples: <em>Sequence alignment</em>, <em>Visualisation</em>, <em>Pathway analysis</em>
+    </p>
+
+    {{ form.edam_operations }}
+
+    <p class="edam-picker__help" id="edam-operations-help">
+      Type to search · Select up to 6 · Backspace removes last
+    </p>
+
+    {% if form.edam_operations.errors %}
+      <div class="invalid-feedback d-block" id="field-errors-edam_operations">
+        {{ form.edam_operations.errors|join:", " }}
+      </div>
+    {% endif %}
+  </div>
+
+</div>

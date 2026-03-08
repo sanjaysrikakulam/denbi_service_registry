@@ -1,0 +1,476 @@
+"""
+de.NBI Service Registry — Django Settings
+==========================================
+All configuration is read from environment variables.
+Copy .env.example to .env and fill in values for local development.
+
+Required variables (no defaults — startup fails if missing):
+  SECRET_KEY      Django secret key
+  DB_PASSWORD     PostgreSQL password
+  REDIS_PASSWORD  Redis password
+
+See .env.example for the full variable reference.
+"""
+import os
+import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# ---------------------------------------------------------------------------
+# Site configuration — loaded from config/site.toml
+# ---------------------------------------------------------------------------
+# All non-secret, human-editable settings live in site.toml.
+# Secrets and connection details stay in .env.
+# ---------------------------------------------------------------------------
+import tomllib as _tomllib
+
+_SITE_CONFIG_PATH = BASE_DIR / "config" / "site.toml"
+try:
+    with open(_SITE_CONFIG_PATH, "rb") as _f:
+        SITE_CONFIG: dict = _tomllib.load(_f)
+except FileNotFoundError:
+    import sys
+    print(
+        f"WARNING: {_SITE_CONFIG_PATH} not found. "
+        "Using built-in defaults. Copy config/site.toml.example if needed.",
+        file=sys.stderr,
+    )
+    SITE_CONFIG = {}
+
+# Convenience accessors — these are used directly in settings below
+_sc        = SITE_CONFIG
+_sc_site   = _sc.get("site",    {})
+_sc_cont   = _sc.get("contact", {})
+_sc_email  = _sc.get("email",   {})
+_sc_links  = _sc.get("links",   {})
+_sc_api    = _sc.get("api",     {})
+_sc_edam   = _sc.get("edam",    {})
+_sc_admin  = _sc.get("admin",   {})
+
+
+def env(key, default=None, required=False):
+    """
+    Read an environment variable.
+    Also checks <KEY>_FILE — if set, reads the value from that file path.
+    This supports Docker Secrets (files mounted at /run/secrets/).
+    """
+    # Check for file-based secret first (Docker Swarm / Docker Secrets)
+    file_path = os.environ.get(f"{key}_FILE")
+    if file_path:
+        try:
+            with open(file_path) as fh:
+                return fh.read().strip()
+        except OSError as exc:
+            raise RuntimeError(f"Cannot read secret file for '{key}': {exc}") from exc
+    value = os.environ.get(key, default)
+    if required and value is None:
+        raise RuntimeError(
+            f"Required environment variable '{key}' is not set. "
+            f"Copy .env.example to .env and fill in all required values."
+        )
+    return value
+
+
+def env_bool(key, default=False):
+    return env(key, str(default)).lower() in ("true", "1", "yes")
+
+
+def env_int(key, default=0):
+    return int(env(key, str(default)))
+
+
+def env_list(key, default="", sep=","):
+    val = env(key, default)
+    return [v.strip() for v in val.split(sep) if v.strip()]
+
+
+# ---------------------------------------------------------------------------
+# Core
+# ---------------------------------------------------------------------------
+SECRET_KEY = env("SECRET_KEY", required=True)
+DEBUG = env_bool("DEBUG", default=False)
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", default="localhost,127.0.0.1")
+
+# ---------------------------------------------------------------------------
+# Applications
+# ---------------------------------------------------------------------------
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework",
+    "rest_framework.authtoken",
+    "drf_spectacular",
+    "corsheaders",
+    "axes",
+    "csp",
+    "django_ratelimit",
+    "django_celery_results",
+    "django_extensions",
+    "apps.registry",
+    "apps.submissions",
+    "apps.api",
+    "apps.edam",
+    "apps.biotools",
+]
+
+# ---------------------------------------------------------------------------
+# Middleware
+# ---------------------------------------------------------------------------
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "axes.middleware.AxesMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.submissions.middleware.RequestIDMiddleware",
+]
+
+ROOT_URLCONF = "config.urls"
+WSGI_APPLICATION = "config.wsgi.application"
+
+# ---------------------------------------------------------------------------
+# Templates
+# ---------------------------------------------------------------------------
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "apps.submissions.context_processors.site_context",
+            ],
+        },
+    },
+]
+
+# ---------------------------------------------------------------------------
+# Database
+# ---------------------------------------------------------------------------
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("DB_NAME", "denbi_registry"),
+        "USER": env("DB_USER", "denbi"),
+        "PASSWORD": env("DB_PASSWORD", required=True),
+        "HOST": env("DB_HOST", "db"),
+        "PORT": env_int("DB_PORT", 5432),
+        "CONN_MAX_AGE": 60,
+        "OPTIONS": {"connect_timeout": 10},
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Internationalisation
+# ---------------------------------------------------------------------------
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = env("TIME_ZONE", "Europe/Berlin")
+USE_I18N = True
+USE_TZ = True
+
+# ---------------------------------------------------------------------------
+# Static files
+# ---------------------------------------------------------------------------
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]  # project-level static files
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "mediafiles"
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ---------------------------------------------------------------------------
+# Security headers
+# ---------------------------------------------------------------------------
+SECURE_HSTS_SECONDS = env_int("HSTS_SECONDS", 31536000)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Strict"
+SESSION_COOKIE_AGE = env_int("SESSION_COOKIE_AGE", 3600)
+
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = "Strict"
+
+X_FRAME_OPTIONS = "DENY"
+
+# EDAM OWL URL: site.toml → [edam] owl_url, overridden by EDAM_OWL_URL env var
+EDAM_OWL_URL = env("EDAM_OWL_URL", _sc_edam.get("owl_url", "https://edamontology.org/EDAM_stable.owl"))
+
+# Admin URL prefix: site.toml → [admin] url_prefix, overridden by ADMIN_URL_PREFIX env var
+ADMIN_URL_PREFIX = env("ADMIN_URL_PREFIX", _sc_admin.get("url_prefix", "admin-denbi"))
+RATE_LIMIT_SUBMIT = env("RATE_LIMIT_SUBMIT", "10/h")
+RATE_LIMIT_UPDATE = env("RATE_LIMIT_UPDATE", "20/h")
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+AXES_FAILURE_LIMIT = env_int("AXES_FAILURE_LIMIT", 5)
+AXES_COOLOFF_TIME = env_int("AXES_COOLOFF_MINUTES", 30) / 60
+AXES_LOCKOUT_CALLABLE = None
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+     "OPTIONS": {"min_length": 12}},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+# ---------------------------------------------------------------------------
+# Email
+# ---------------------------------------------------------------------------
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend" if DEBUG
+    else "django.core.mail.backends.smtp.EmailBackend"
+)
+EMAIL_HOST = env("EMAIL_HOST", "localhost")
+EMAIL_PORT = env_int("EMAIL_PORT", 587)
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
+# Email from: env var overrides site.toml which overrides hardcoded default
+DEFAULT_FROM_EMAIL = env("EMAIL_FROM", _sc_email.get("from_address", "no-reply@denbi.de"))
+EMAIL_SUBJECT_PREFIX = _sc_email.get("subject_prefix", "[de.NBI Registry]")
+SUBMISSION_NOTIFY_CC = env_list("SUBMISSION_NOTIFY_CC", "")
+SUBMISSION_NOTIFY_OVERRIDE = env("SUBMISSION_NOTIFY_OVERRIDE", "")
+
+# ---------------------------------------------------------------------------
+# Redis / Celery
+# ---------------------------------------------------------------------------
+_redis_host = env("REDIS_HOST", "redis")
+_redis_port = env_int("REDIS_PORT", 6379)
+_redis_password = env("REDIS_PASSWORD", required=True)
+_redis_url = f"redis://:{_redis_password}@{_redis_host}:{_redis_port}/0"
+
+CELERY_BROKER_URL = _redis_url
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_CACHE_BACKEND = "default"
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    "cleanup-stale-drafts": {
+        "task": "apps.submissions.tasks.cleanup_stale_drafts",
+        "schedule": 21600,
+    },
+    "sync-biotools-daily": {
+        "task": "biotools.sync_all",
+        "schedule": 86400,
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Django REST Framework
+# ---------------------------------------------------------------------------
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.api.authentication.SubmissionAPIKeyAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": env_int("API_PAGE_SIZE", 20),
+    "MAX_PAGINATE_BY": env_int("API_MAX_PAGE_SIZE", 100),
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "10/min",
+        "user": env("RATE_LIMIT_API", "60/m"),
+    },
+    "EXCEPTION_HANDLER": "apps.api.exceptions.custom_exception_handler",
+}
+
+# ---------------------------------------------------------------------------
+# drf-spectacular
+# ---------------------------------------------------------------------------
+SPECTACULAR_SETTINGS = {
+    "TITLE": _sc_api.get("title", "de.NBI Service Registry API"),
+    "DESCRIPTION": (
+        "REST API for the de.NBI & ELIXIR-DE Service Registration system.\n\n"
+        "## Authentication\n\n"
+        "### Admin Token (list all submissions)\n"
+        "Create a token in the admin under **Auth Token → Tokens → Add**. "
+        "Then click **Authorize** above and enter:\n"
+        "```\nToken <paste-your-token-here>\n```\n\n"
+        "### Submission API Key (access your own submission)\n"
+        "Your API key is returned once when you submit the registration form. "
+        "Click **Authorize** and enter:\n"
+        "```\n<paste-your-api-key-here>\n```\n"
+        "(no prefix needed in the Swagger UI for ApiKey)"
+    ),
+    "VERSION": _sc_api.get("version", "1.0.0"),
+    "SERVE_INCLUDE_SCHEMA": False,
+    "CONTACT": {"email": _sc_cont.get("email", "servicecoordination@denbi.de"),
+                "url":   _sc_site.get("url", "")},
+    "LICENSE": {"name": _sc_api.get("license_name", "MIT")},
+    "SWAGGER_UI_SETTINGS": {"persistAuthorization": True, "displayRequestDuration": True},
+    # Expose both auth schemes in the Swagger UI Authorize dialog
+    "SECURITY_DEFINITIONS": {
+        "AdminToken": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": (
+                "Django REST Framework Token authentication for admin users. "
+                "Format: **Token <your-token>**  (include the word 'Token' and a space)"
+            ),
+        },
+        "SubmissionApiKey": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": (
+                "Submission API key issued on registration. "
+                "Format: **ApiKey <your-key>**  (include the word 'ApiKey' and a space)"
+            ),
+        },
+    },
+    # Apply both schemes globally so every endpoint shows the lock icon
+    "SECURITY": [{"AdminToken": []}, {"SubmissionApiKey": []}],
+    # Map DRF authenticator classes to the OpenAPI security schemes above
+    "AUTHENTICATION_WHITELIST": [
+        "rest_framework.authentication.TokenAuthentication",
+        "apps.api.authentication.SubmissionAPIKeyAuthentication",
+    ],
+}
+
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", "")
+CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", False)
+CORS_ALLOW_METHODS = ["GET", "POST", "PATCH", "OPTIONS"]
+CORS_ALLOW_HEADERS = ["authorization", "content-type", "x-csrftoken"]
+CORS_PREFLIGHT_MAX_AGE = 86400
+
+# ---------------------------------------------------------------------------
+# Content Security Policy
+# ---------------------------------------------------------------------------
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'", "https://js.hcaptcha.com", "https://challenges.cloudflare.com")
+CSP_STYLE_SRC = ("'self'", "https://cdn.jsdelivr.net")
+CSP_IMG_SRC = ("'self'", "data:")
+CSP_FONT_SRC = ("'self'",)
+CSP_CONNECT_SRC = ("'self'", "https://hcaptcha.com")
+CSP_FRAME_SRC = ("https://hcaptcha.com", "https://challenges.cloudflare.com")
+CSP_FRAME_ANCESTORS = ("'none'",)
+CSP_FORM_ACTION = ("'self'",)
+CSP_BASE_URI = ("'self'",)
+CSP_OBJECT_SRC = ("'none'",)
+CSP_UPGRADE_INSECURE_REQUESTS = not DEBUG
+
+# ---------------------------------------------------------------------------
+# CAPTCHA
+# ---------------------------------------------------------------------------
+CAPTCHA_ENABLED = env_bool("CAPTCHA_ENABLED", not DEBUG)
+CAPTCHA_PROVIDER = env("CAPTCHA_PROVIDER", "hcaptcha")
+HCAPTCHA_SECRET_KEY = env("HCAPTCHA_SECRET_KEY", "")
+HCAPTCHA_SITEKEY = env("HCAPTCHA_SITEKEY", "")
+TURNSTILE_SECRET_KEY = env("TURNSTILE_SECRET_KEY", "")
+TURNSTILE_SITEKEY = env("TURNSTILE_SITEKEY", "")
+
+# ---------------------------------------------------------------------------
+# Rate limiting / API keys / Cache
+# ---------------------------------------------------------------------------
+RATELIMIT_USE_CACHE = "default"
+RATELIMIT_FAIL_OPEN = False
+
+API_KEY_ENTROPY_BYTES = env_int("API_KEY_ENTROPY_BYTES", 48)
+API_KEY_HASH_ALGORITHM = env("API_KEY_HASH_ALGORITHM", "sha256")
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": _redis_url,
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
+        "scrub_sensitive": {"()": "apps.submissions.logging_filters.ScrubSensitiveFilter"},
+    },
+    "formatters": {
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s %(request_id)s",
+        },
+        "verbose": {"format": "{levelname} {asctime} {module} {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json" if not DEBUG else "verbose",
+            "filters": ["scrub_sensitive"],
+            "stream": sys.stdout,
+        },
+        "mail_admins": {
+            "level": "ERROR",
+            "class": "django.utils.log.AdminEmailHandler",
+            "filters": ["require_debug_false"],
+        },
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.request": {"handlers": ["console", "mail_admins"], "level": "ERROR", "propagate": False},
+        "apps": {"handlers": ["console"], "level": "DEBUG" if DEBUG else "INFO", "propagate": False},
+        "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}
+
+# ---------------------------------------------------------------------------
+# Sentry (optional)
+# ---------------------------------------------------------------------------
+_sentry_dsn = env("SENTRY_DSN", "")
+if _sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        traces_sample_rate=float(env("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        send_default_pii=False,
+    )

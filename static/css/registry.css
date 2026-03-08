@@ -1,0 +1,618 @@
+/* =============================================================================
+   de.NBI Service Registry — Design System
+   =============================================================================
+   Single stylesheet loaded after Bootstrap in base.html.
+   Sections:
+     1. Tokens & reset
+     2. Typography (IBM Plex Sans)
+     3. Navbar
+     4. Layout & page structure
+     5. Form fields
+     6. Section cards
+     7. EDAM Tag Picker  ← core redesign
+     8. Sidebar navigation
+     9. Progress bar
+    10. Draft / info banners
+    11. Consent block
+    12. Submit row (sticky)
+    13. Error states
+    14. Status badges
+    15. Utility / accessibility
+   ============================================================================= */
+
+/* ---------------------------------------------------------------------------
+   1. Tokens & reset
+   --------------------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  --g:          #5c9d25;
+  --g-dark:     #4a7e1c;
+  --g-deeper:   #3a6216;
+  --g-light:    #f0f7e6;
+  --g-lighter:  #f7fbf0;
+  --g-border:   #c8e49e;
+  --g-mid:      #8bc34a;
+
+  --charcoal:   #1f2937;
+  --gray-600:   #4b5563;
+  --gray-400:   #9ca3af;
+  --gray-200:   #e5e7eb;
+  --gray-100:   #f3f4f6;
+  --gray-50:    #f9fafb;
+
+  --red:        #dc3545;
+  --red-light:  #fff5f5;
+  --red-border: #fecaca;
+
+  --amber:      #d97706;
+  --amber-light:#fffbeb;
+  --amber-border:#fde68a;
+
+  --blue-light: #eff6ff;
+  --blue-border:#bfdbfe;
+
+  --radius-sm:  4px;
+  --radius:     7px;
+  --radius-lg:  10px;
+
+  --shadow-xs:  0 1px 3px rgba(0,0,0,.06);
+  --shadow-sm:  0 2px 6px rgba(0,0,0,.08);
+  --shadow-md:  0 4px 16px rgba(0,0,0,.10);
+  --shadow-lg:  0 8px 28px rgba(0,0,0,.12);
+
+  --focus-ring:     0 0 0 3px rgba(92,157,37,.28);
+  --focus-ring-err: 0 0 0 3px rgba(220,53,69,.20);
+
+  --font: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'IBM Plex Mono', 'Fira Code', monospace;
+
+  --transition: 150ms ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: var(--font);
+  color: var(--charcoal);
+  background: #f4f6f8;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------------------------------------------------------------------------
+   2. Navbar
+   --------------------------------------------------------------------------- */
+.navbar-denbi {
+  background: #fff !important;
+  border-bottom: 3px solid var(--g);
+  box-shadow: var(--shadow-xs);
+}
+.navbar-denbi .navbar-brand { gap: .5rem; }
+.navbar-denbi .navbar-brand img { height: 38px; width: auto; }
+.navbar-denbi .navbar-brand-text { font-weight: 500; font-size: .95rem; color: #555; }
+.navbar-denbi .nav-link {
+  color: var(--charcoal) !important;
+  font-weight: 500;
+  font-size: .9rem;
+  padding: .35rem .85rem !important;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition), color var(--transition);
+}
+.navbar-denbi .nav-link:hover { background: var(--g-light); color: var(--g-dark) !important; }
+.navbar-denbi .nav-link.active { color: var(--g) !important; font-weight: 600; }
+
+/* ---------------------------------------------------------------------------
+   3. Layout
+   --------------------------------------------------------------------------- */
+main.container { max-width: 1140px; }
+.page-header h1 { font-size: 1.45rem; font-weight: 700; color: var(--charcoal); }
+.page-header .lead { font-size: .9rem; color: var(--gray-600); }
+
+/* ---------------------------------------------------------------------------
+   4. Form fields
+   --------------------------------------------------------------------------- */
+.form-label {
+  font-weight: 500;
+  font-size: .875rem;
+  color: #374151;
+  margin-bottom: .3rem;
+}
+.form-control, .form-select {
+  font-family: var(--font);
+  font-size: .9375rem;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  color: var(--charcoal);
+  background: #fff;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--g);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+.form-control.is-invalid, .form-select.is-invalid {
+  border-color: var(--red);
+  box-shadow: var(--focus-ring-err);
+}
+.form-text { font-size: .8rem; color: var(--gray-400); margin-top: .3rem; }
+.required-star { color: var(--red); margin-left: 2px; font-weight: 700; }
+
+.form-check-input:checked { background-color: var(--g); border-color: var(--g); }
+.form-check-input:focus { box-shadow: var(--focus-ring); border-color: var(--g); }
+
+/* ---------------------------------------------------------------------------
+   5. Section cards
+   --------------------------------------------------------------------------- */
+.section-card {
+  background: #fff;
+  border: 1.5px solid var(--gray-200);
+  border-left: 4px solid var(--g);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  margin-bottom: 1.75rem;
+  overflow: hidden;
+}
+.section-card .card-header {
+  background: linear-gradient(to right, var(--g-light), #fff);
+  border-bottom: 1px solid var(--g-border);
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+  color: var(--g-deeper);
+  padding: .7rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.section-card .card-body { padding: 1.4rem 1.25rem 1rem; }
+.section-card.has-section-error { border-left-color: var(--red) !important; }
+.section-card.has-section-error .card-header {
+  background: var(--red-light) !important;
+  color: var(--red);
+  border-bottom-color: var(--red-border);
+}
+
+/* ---------------------------------------------------------------------------
+   6. EDAM Tag Picker
+   The core redesign: pill zone + search + dropdown
+   --------------------------------------------------------------------------- */
+
+/* Hide the raw Django <select> — our custom picker replaces it visually */
+select.edam-autocomplete { display: none !important; }
+
+/* Outer container */
+.edam-picker {
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  overflow: visible;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.edam-picker:focus-within {
+  border-color: var(--g);
+  box-shadow: var(--focus-ring);
+}
+.edam-picker.is-error {
+  border-color: var(--red);
+  box-shadow: var(--focus-ring-err);
+}
+
+/* ── Header row ── */
+.edam-picker__header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem 1rem .5rem;
+  border-bottom: 1px solid var(--gray-100);
+  background: var(--gray-50);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  user-select: none;
+}
+.edam-picker__title {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--gray-600);
+  flex: 1;
+}
+.edam-picker__counter {
+  font-size: .7rem;
+  font-weight: 700;
+  background: var(--g-light);
+  color: var(--g-dark);
+  border: 1px solid var(--g-border);
+  border-radius: 20px;
+  padding: 2px 9px;
+  min-width: 44px;
+  text-align: center;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.edam-picker__counter.is-full {
+  background: var(--amber-light);
+  color: var(--amber);
+  border-color: var(--amber-border);
+}
+.edam-picker__clear {
+  font-size: .72rem;
+  color: var(--gray-400);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 2px 7px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  gap: 3px;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.edam-picker__clear:hover {
+  background: #fff1f2;
+  color: var(--red);
+  border-color: var(--red-border);
+}
+.edam-picker__clear.visible { display: inline-flex; }
+
+/* ── Selected pills zone ── */
+.edam-picker__pills {
+  min-height: 52px;
+  padding: .6rem 1rem .5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--gray-100);
+  background: #fff;
+}
+.edam-picker__empty {
+  font-size: .82rem;
+  color: var(--gray-400);
+  font-style: italic;
+  align-self: center;
+  pointer-events: none;
+  padding: .1rem 0;
+}
+
+/* Individual pill */
+.edam-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .28rem;
+  background: var(--g-light);
+  border: 1px solid var(--g-border);
+  color: var(--g-deeper);
+  border-radius: 20px;
+  padding: 3px 6px 3px 11px;
+  font-size: .8rem;
+  font-weight: 500;
+  line-height: 1.45;
+  cursor: default;
+  max-width: 280px;
+  animation: pillIn .14s cubic-bezier(.34,1.56,.64,1);
+  transition: background var(--transition), border-color var(--transition);
+}
+.edam-pill:hover { background: #dff0bf; border-color: #a8cf6e; }
+.edam-pill__text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.edam-pill__remove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(92,157,37,.15);
+  border: none;
+  cursor: pointer;
+  color: var(--g-dark);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  transition: background var(--transition), color var(--transition);
+}
+.edam-pill__remove:hover {
+  background: rgba(220,53,69,.18);
+  color: var(--red);
+}
+.edam-pill__remove:focus-visible {
+  outline: 2px solid var(--g);
+  outline-offset: 1px;
+}
+@keyframes pillIn {
+  from { opacity: 0; transform: scale(.8) translateY(2px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Max warning ── */
+.edam-picker__maxwarn {
+  display: none;
+  margin: 0 1rem;
+  padding: .32rem .75rem;
+  font-size: .775rem;
+  font-weight: 500;
+  color: var(--amber);
+  background: var(--amber-light);
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+.edam-picker__maxwarn.visible { display: block; }
+
+/* ── Search zone ── */
+.edam-picker__search {
+  padding: .55rem 1rem;
+  position: relative;
+}
+.edam-picker__input {
+  width: 100%;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: .42rem .75rem .42rem 2.1rem;
+  font-size: .875rem;
+  font-family: var(--font);
+  color: var(--charcoal);
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: .62rem 50%;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.edam-picker__input:focus {
+  border-color: var(--g);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+.edam-picker__input:disabled {
+  background-color: var(--gray-50);
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+.edam-picker__input::placeholder { color: var(--gray-400); font-style: italic; }
+
+/* ── Dropdown ── */
+.edam-picker__dropdown {
+  display: none;
+  /* position:fixed set dynamically by JS (avoids overflow:hidden clipping) */
+  z-index: 1060;
+  background: #fff;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-height: 300px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+}
+.edam-picker__dropdown.open { display: block; }
+
+.edam-picker__option {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .52rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--gray-100);
+  transition: background var(--transition);
+}
+.edam-picker__option:last-child { border-bottom: none; }
+.edam-picker__option:hover,
+.edam-picker__option.highlighted {
+  background: var(--g-lighter);
+}
+.edam-picker__option.is-selected {
+  background: var(--g-light);
+  color: var(--g-dark);
+  cursor: default;
+  pointer-events: none;
+}
+.edam-picker__option.is-selected::after {
+  content: "✓";
+  margin-left: auto;
+  font-size: .75rem;
+  color: var(--g);
+  font-weight: 700;
+}
+.edam-picker__opt-label {
+  font-size: .875rem;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.edam-picker__opt-label mark {
+  background: #fef08a;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+  font-style: normal;
+}
+.edam-picker__noresults {
+  padding: 1.1rem 1rem;
+  text-align: center;
+  color: var(--gray-400);
+  font-size: .875rem;
+  font-style: italic;
+}
+
+/* ── Hint text below picker ── */
+.edam-picker__help {
+  font-size: .775rem;
+  color: var(--gray-400);
+  margin-top: .35rem;
+  padding: 0 .1rem;
+}
+
+/* ---------------------------------------------------------------------------
+   7. Sidebar navigation
+   --------------------------------------------------------------------------- */
+.sidebar-nav { position: sticky; top: 1.25rem; }
+.sidebar-nav .card {
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+.sidebar-nav .card-header {
+  background: linear-gradient(to right, var(--g-light), #fff);
+  border-bottom: 1px solid var(--g-border);
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--g-deeper);
+  padding: .55rem 1rem;
+}
+.sidebar-nav .nav-link {
+  font-size: .82rem;
+  color: var(--gray-600);
+  padding: .32rem .75rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  transition: background var(--transition), color var(--transition);
+  text-decoration: none;
+}
+.sidebar-nav .nav-link:hover { background: var(--g-lighter); color: var(--g-dark); }
+.sidebar-nav .nav-link.active {
+  background: var(--g-light);
+  color: var(--g-dark);
+  font-weight: 600;
+}
+.section-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gray-200);
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+.section-dot.complete  { background: var(--g); }
+.section-dot.has-error { background: var(--red); }
+
+/* ---------------------------------------------------------------------------
+   8. Progress bar
+   --------------------------------------------------------------------------- */
+.form-progress-track {
+  height: 6px;
+  background: var(--gray-100);
+  border-radius: 20px;
+  overflow: hidden;
+}
+.form-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--g) 0%, var(--g-mid) 100%);
+  border-radius: 20px;
+  transition: width .45s cubic-bezier(.4,0,.2,1);
+}
+
+/* ---------------------------------------------------------------------------
+   9. Banners (draft, info, error)
+   --------------------------------------------------------------------------- */
+.banner-draft {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  background: var(--blue-light);
+  border: 1px solid var(--blue-border);
+  border-radius: var(--radius);
+  padding: .65rem 1rem;
+  font-size: .875rem;
+  margin-bottom: 1.25rem;
+}
+.banner-draft__icon { font-size: 1.1rem; }
+
+/* ---------------------------------------------------------------------------
+   10. Consent block
+   --------------------------------------------------------------------------- */
+.consent-block {
+  background: var(--amber-light);
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+
+/* ---------------------------------------------------------------------------
+   11. Sticky submit row
+   --------------------------------------------------------------------------- */
+.form-submit-row {
+  position: sticky;
+  bottom: 0;
+  z-index: 80;
+  background: rgba(244,246,248,.97);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1.5px solid var(--gray-200);
+  padding: .85rem 0;
+  margin-top: 1.5rem;
+}
+
+/* Primary button */
+.btn-primary {
+  background: var(--g);
+  border-color: var(--g);
+  font-family: var(--font);
+  font-weight: 600;
+  letter-spacing: .01em;
+  padding: .52rem 1.75rem;
+  border-radius: var(--radius);
+  transition: background var(--transition), box-shadow var(--transition), transform .1s;
+}
+.btn-primary:hover {
+  background: var(--g-dark);
+  border-color: var(--g-dark);
+  box-shadow: 0 4px 14px rgba(92,157,37,.32);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); box-shadow: none; }
+.btn-outline-secondary { border-radius: var(--radius); font-weight: 500; }
+
+/* ---------------------------------------------------------------------------
+   12. Error states
+   --------------------------------------------------------------------------- */
+.mb-3.has-error .form-label { color: var(--red); }
+.mb-3.has-error .form-control,
+.mb-3.has-error .form-select {
+  border-color: var(--red);
+  box-shadow: var(--focus-ring-err);
+}
+.invalid-feedback { font-size: .8rem; }
+
+/* ---------------------------------------------------------------------------
+   13. Status badges
+   --------------------------------------------------------------------------- */
+.badge-status {
+  display: inline-block;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+/* ---------------------------------------------------------------------------
+   14. Accessibility utilities
+   --------------------------------------------------------------------------- */
+:focus-visible { outline: 2px solid var(--g); outline-offset: 2px; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); border: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

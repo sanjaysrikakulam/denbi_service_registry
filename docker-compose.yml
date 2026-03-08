@@ -1,0 +1,142 @@
+# =============================================================================
+# de.NBI Service Registry — Docker Compose (Development)
+# =============================================================================
+# Usage:
+#   cp .env.example .env          # Fill in secrets
+#   docker compose up -d
+#   docker compose exec web python manage.py migrate
+#   docker compose exec web python manage.py createsuperuser
+#
+# The web service uses Django's runserver with live code reloading.
+# For production, use docker-compose.prod.yml.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Django development server
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      target: runtime          # Use runtime stage (skip collectstatic)
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings
+    env_file:
+      - .env
+    volumes:
+      - .:/app                 # Live code reload
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Celery worker — async email tasks
+  # ---------------------------------------------------------------------------
+  worker:
+    build:
+      context: .
+      target: runtime
+    command: celery -A config worker --loglevel=info --concurrency=2
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - db
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Celery beat — periodic tasks (stale draft cleanup, etc.)
+  # ---------------------------------------------------------------------------
+  # The PersistentScheduler writes celerybeat-schedule (shelve) to the named volume.
+  # These MUST live on a named volume, NOT in /app (the bind-mounted source
+  # tree), otherwise permission errors cause infinite restarts. No pidfile needed in containers.
+  # ---------------------------------------------------------------------------
+  beat:
+    build:
+      context: .
+      target: runtime
+    command: >
+      celery -A config beat
+        --loglevel=info
+        --scheduler celery.beat.PersistentScheduler
+        --schedule /var/run/celerybeat/celerybeat-schedule
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - celery_beat:/var/run/celerybeat
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — primary database
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: denbi_registry
+      POSTGRES_USER: denbi
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U denbi -d denbi_registry"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # NOT exposed on host ports in dev (access via docker exec or pgAdmin)
+
+  # ---------------------------------------------------------------------------
+  # Redis — Celery broker + rate-limit cache
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    command: >
+      redis-server
+        --requirepass ${REDIS_PASSWORD}
+        --maxmemory 256mb
+        --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # NOT exposed on host ports
+
+volumes:
+  pg_data:
+  redis_data:
+  celery_beat:      # Stores PersistentScheduler shelve file
+
+networks:
+  backend:
+    driver: bridge

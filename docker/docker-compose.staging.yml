@@ -1,0 +1,41 @@
+# =============================================================================
+# de.NBI Service Registry — Staging Environment Overlay
+# =============================================================================
+# Production-like environment for integration testing before production deploy.
+# Uses real Postgres + Redis but with CAPTCHA disabled and email to file.
+#
+# Usage:
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.prod.yml \
+#     -f docker/docker-compose.staging.yml \
+#     up -d
+#
+# Create a .env.staging file with the same variables as .env.example.
+# =============================================================================
+
+services:
+
+  web:
+    environment:
+      - CAPTCHA_ENABLED=false
+      - EMAIL_BACKEND=django.core.mail.backends.filebased.EmailBackend
+      - EMAIL_FILE_PATH=/tmp/staging-emails
+      - DEBUG=false
+    env_file:
+      - .env.staging
+
+  worker:
+    env_file:
+      - .env.staging
+
+  beat:
+    env_file:
+      - .env.staging
+
+  nginx:
+    volumes:
+      - ./nginx/nginx.staging.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl-staging:/etc/nginx/ssl:ro
+      - celery_beat:/var/run/celerybeat
+  celery_beat:

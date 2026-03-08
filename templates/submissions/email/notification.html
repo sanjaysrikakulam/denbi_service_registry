@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><style>
+body { font-family: Arial, sans-serif; font-size: 14px; color: #333; }
+h2 { color: #005b9a; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.badge-submitted { background: #cfe2ff; color: #0a58ca; }
+.badge-approved  { background: #d1e7dd; color: #0f5132; }
+.badge-rejected  { background: #f8d7da; color: #842029; }
+table { border-collapse: collapse; width: 100%; }
+td, th { padding: 6px 10px; border: 1px solid #dee2e6; }
+th { background: #e8f0f8; font-weight: bold; text-align: left; }
+</style></head>
+<body>
+<h2>de.NBI Service Registry — {{ event|title }} Notification</h2>
+<p>
+  <strong>Service:</strong> {{ submission.service_name }}<br>
+  <strong>Status:</strong> <span class="badge badge-{{ submission.status }}">{{ submission.get_status_display }}</span><br>
+  <strong>ID:</strong> <code>{{ submission.id }}</code><br>
+  <strong>Timestamp:</strong> {{ submission.updated_at|date:"Y-m-d H:i" }} UTC
+</p>
+<table>
+<tr><th>Submitter</th><td>{{ submission.submitter_first_name }} {{ submission.submitter_last_name }}, {{ submission.submitter_affiliation }}</td></tr>
+<tr><th>Host Institute</th><td>{{ submission.host_institute }}</td></tr>
+<tr><th>Service Centre</th><td>{{ submission.service_center }}</td></tr>
+<tr><th>ELIXIR-DE</th><td>{% if submission.register_as_elixir %}Yes{% else %}No{% endif %}</td></tr>
+<tr><th>Categories</th><td>{{ categories|join:", " }}</td></tr>
+<tr><th>Year Established</th><td>{{ submission.year_established }}</td></tr>
+<tr><th>Website</th><td><a href="{{ submission.website_url }}">{{ submission.website_url }}</a></td></tr>
+<tr><th>License</th><td>{{ submission.get_license_display }}</td></tr>
+<tr><th>Publications</th><td>{{ submission.publications_pmids }}</td></tr>
+<tr><th>Responsible PIs</th><td>{% for pi in pis %}{{ pi }}{% if not forloop.last %}, {% endif %}{% endfor %}</td></tr>
+<tr><th>KPI Monitoring</th><td>{{ submission.get_kpi_monitoring_display }} ({{ submission.kpi_start_year }})</td></tr>
+<tr><th>Public Contact</th><td>{{ submission.public_contact_email }}</td></tr>
+<tr><th>Internal Contact</th><td>{{ submission.internal_contact_name }} &lt;{{ submission.internal_contact_email }}&gt;</td></tr>
+</table>
+<p style="margin-top:1rem;font-size:12px;color:#666;">
+  {{ CONTACT_ORG }} &bull; <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>
+</p>
+</body>
+</html>

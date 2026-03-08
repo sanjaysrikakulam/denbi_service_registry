@@ -1,0 +1,67 @@
+# =============================================================================
+# de.NBI Service Registry — Database Backup Service
+# =============================================================================
+# Purpose: Run alongside the main stack to provide scheduled PostgreSQL backups.
+#          Backups are written to a named volume and/or an S3-compatible bucket.
+#
+# Usage (add to production compose):
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.prod.yml \
+#     -f docker/docker-compose.backup.yml \
+#     up -d
+#
+# Backups run daily at 02:00 Europe/Berlin time.
+# Retention: last 7 daily backups kept locally.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # pg_dump backup with retention
+  # ---------------------------------------------------------------------------
+  backup:
+    image: postgres:15-alpine
+    entrypoint: |
+      sh -c '
+        echo "Starting backup scheduler..."
+        while true; do
+          TIMESTAMP=$$(date +%Y%m%d_%H%M%S)
+          BACKUP_FILE=/backups/denbi_registry_$${TIMESTAMP}.sql.gz
+          echo "[$$(date)] Running backup -> $${BACKUP_FILE}"
+          PGPASSWORD="$$DB_PASSWORD" pg_dump \
+            -h db -U denbi -d denbi_registry \
+            | gzip > "$$BACKUP_FILE"
+          if [ $$? -eq 0 ]; then
+            echo "[$$(date)] Backup successful: $${BACKUP_FILE}"
+          else
+            echo "[$$(date)] Backup FAILED!" >&2
+          fi
+          # Retain only the last 7 backups
+          ls -t /backups/denbi_registry_*.sql.gz | tail -n +8 | xargs rm -f
+          echo "[$$(date)] Next backup in 24h"
+          sleep 86400
+        done
+      '
+    environment:
+      - DB_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - backup_vol:/backups
+    depends_on:
+      - db
+    networks:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backup_vol:
+    driver: local
+    driver_opts:
+      type: none
+      device: /opt/denbi-backups    # Adjust to your host backup directory
+      o: bind
+
+networks:
+  backend:
+    external: true
+    name: denbi-registry_backend

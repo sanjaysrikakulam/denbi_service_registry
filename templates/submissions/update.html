@@ -1,0 +1,60 @@
+{% extends "base/base.html" %}
+{% load i18n %}
+
+{% block title %}Update a Registration — de.NBI{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="bg-light py-2">
+  <div class="container">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item active">Update Registration</li>
+    </ol>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+
+    <h1 class="h3 mb-2">Update Your Service Registration</h1>
+    <p class="text-muted mb-4">
+      Enter the API key you received when you originally submitted your service.
+      The form will be pre-populated with your existing data.
+    </p>
+
+    {% if form.errors %}
+    <div class="alert alert-danger" role="alert">
+      {{ form.errors }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="{% url 'submissions:update' %}" novalidate>
+      {% csrf_token %}
+      <div class="mb-3">
+        <label for="{{ form.api_key.id_for_label }}" class="form-label fw-bold">
+          {{ form.api_key.label }}
+        </label>
+        {{ form.api_key }}
+        {% if form.api_key.help_text %}
+        <div class="form-text">{{ form.api_key.help_text }}</div>
+        {% endif %}
+        {% if form.api_key.errors %}
+        <div class="text-danger small mt-1">{{ form.api_key.errors }}</div>
+        {% endif %}
+      </div>
+      <button type="submit" class="btn btn-primary">Retrieve My Registration</button>
+      <a href="/" class="btn btn-link">Cancel</a>
+    </form>
+
+    <hr class="my-4">
+    <p class="text-muted small">
+      Lost your API key? Contact the de.NBI administration office at
+      <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>
+      to have a new key issued.
+    </p>
+
+  </div>
+</div>
+{% endblock %}

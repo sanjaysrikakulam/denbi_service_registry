@@ -1,0 +1,93 @@
+{% extends "base/base.html" %}
+
+{% block title %}Registration Submitted — de.NBI{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="bg-light py-2">
+  <div class="container">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'submissions:register' %}">Register</a></li>
+      <li class="breadcrumb-item active">Submitted</li>
+    </ol>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    <div class="alert alert-success d-flex align-items-center mb-4" role="alert">
+      <svg class="bi flex-shrink-0 me-2" width="24" height="24" role="img"><use xlink:href="#check-circle-fill"/></svg>
+      <div><strong>Your service registration has been submitted.</strong>
+        The de.NBI administration office has been notified.
+      </div>
+    </div>
+
+    <!-- API Key — shown exactly once -->
+    <div class="card border-warning mb-4">
+      <div class="card-header bg-warning text-dark fw-bold">
+        &#128273; Your API Key — Save This Now
+      </div>
+      <div class="card-body">
+        <p class="mb-2">
+          Use this key to <strong>retrieve or edit</strong> your submission in the future.
+          <strong>This key is shown exactly once</strong> and is not stored anywhere
+          that you can retrieve it — not in any email, not in any database field.
+        </p>
+
+        <div class="api-key-box mb-3" id="api-key-display" aria-label="Your API key">
+          {{ api_key }}
+        </div>
+
+        <button class="btn btn-outline-secondary btn-sm"
+                onclick="copyKey()"
+                id="copy-btn"
+                type="button">
+          Copy to clipboard
+        </button>
+        <small class="text-muted ms-2" id="copy-feedback" aria-live="polite"></small>
+
+        <hr>
+        <p class="text-danger small mb-0">
+          <strong>Warning:</strong> If you lose this key, you will not be able to edit your
+          submission. The de.NBI administration office can issue a new key for you, but
+          that requires contacting them at
+          <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>.
+        </p>
+      </div>
+    </div>
+
+    {% if submission_id %}
+    <p class="text-muted small">Submission reference ID: <code>{{ submission_id }}</code></p>
+    {% endif %}
+
+    <p>
+      <a href="{% url 'submissions:update' %}" class="btn btn-outline-primary">
+        Edit my submission later
+      </a>
+      <a href="{% url 'submissions:register' %}" class="btn btn-link ms-2">
+        Register another service
+      </a>
+    </p>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyKey() {
+  const key = document.getElementById('api-key-display').textContent.trim();
+  navigator.clipboard.writeText(key).then(() => {
+    document.getElementById('copy-feedback').textContent = 'Copied!';
+    document.getElementById('copy-btn').textContent = '✓ Copied';
+    setTimeout(() => {
+      document.getElementById('copy-feedback').textContent = '';
+      document.getElementById('copy-btn').textContent = 'Copy to clipboard';
+    }, 3000);
+  });
+}
+</script>
+{% endblock %}

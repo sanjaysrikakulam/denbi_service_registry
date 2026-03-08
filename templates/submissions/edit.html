@@ -1,0 +1,98 @@
+{% extends "base/base.html" %}
+{% load i18n %}
+
+{% block title %}Edit: {{ submission.service_name }} — de.NBI{% endblock %}
+{% block meta_description %}Edit your de.NBI service registration.{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="bg-light py-2">
+  <div class="container">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'submissions:update' %}">Update</a></li>
+      <li class="breadcrumb-item active">Edit: {{ submission.service_name|truncatechars:40 }}</li>
+    </ol>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-9">
+
+    <h1 class="h3 mb-1">de.NBI &amp; ELIXIR-DE Service Registration Form</h1>
+    <p class="text-muted mb-4">
+      Version {{ SITE.form_version }} &mdash; {{ SITE.form_date }} &bull;
+      All fields marked <span class="required-star">*</span> are mandatory.
+    </p>
+
+    <div class="alert alert-info mb-4">
+      <strong>Editing:</strong> {{ submission.service_name }}<br>
+      <small>Last updated: {{ submission.updated_at|date:"Y-m-d H:i" }} UTC &bull;
+             Status: {{ submission.get_status_display }}</small>
+    </div>
+
+    <form method="post"
+          action="{% url 'submissions:edit' %}"
+          novalidate
+          id="registration-form"
+          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+      {% csrf_token %}
+
+      {% include "submissions/partials/form_body.html" %}
+
+      <!-- Submit bar -->
+      <div class="form-submit-row d-flex justify-content-between align-items-center">
+        <span class="text-muted small">All fields marked <span class="required-star">*</span> are required</span>
+        <div class="d-flex gap-2">
+          <a href="{% url 'submissions:update' %}" class="btn btn-outline-secondary">Cancel</a>
+          <button type="submit" class="btn btn-warning btn-lg px-4">
+            Save Changes →
+          </button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Right sidebar -->
+  <div class="col-lg-3">
+    <div class="sidebar-nav">
+      <div class="card">
+        <div class="card-header">Form Sections</div>
+        <div class="card-body p-2">
+          <nav class="nav flex-column" aria-label="Form sections">
+            <a class="nav-link" href="#section-a" data-section="a"><span class="section-dot" id="dot-a"></span>📋 General</a>
+            <a class="nav-link" href="#section-b" data-section="b"><span class="section-dot" id="dot-b"></span>🔬 Service Data</a>
+            <a class="nav-link" href="#section-c" data-section="c"><span class="section-dot" id="dot-c"></span>👥 Responsibilities</a>
+            <a class="nav-link" href="#section-d" data-section="d"><span class="section-dot" id="dot-d"></span>🔗 Links</a>
+            <a class="nav-link" href="#section-e" data-section="e"><span class="section-dot" id="dot-e"></span>📊 KPIs</a>
+            <a class="nav-link" href="#section-f" data-section="f"><span class="section-dot" id="dot-f"></span>🏷️ Discoverability</a>
+            <a class="nav-link" href="#section-g" data-section="g"><span class="section-dot" id="dot-g"></span>🔒 Consent</a>
+          </nav>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header">Completion</div>
+        <div class="card-body py-2 px-3">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="small text-muted">Required fields</span>
+            <span class="small fw-semibold" id="progress-label">0%</span>
+          </div>
+          <div class="form-progress">
+            <div class="form-progress-fill" id="progress-bar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-body py-2 px-3">
+          <p class="small text-muted mb-1"><strong>Need help?</strong></p>
+          <a href="mailto:{{ CONTACT_EMAIL }}" class="small">{{ CONTACT_EMAIL }}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

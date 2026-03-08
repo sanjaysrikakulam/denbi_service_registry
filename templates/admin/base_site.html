@@ -1,0 +1,255 @@
+{% extends "admin/base.html" %}
+{% load static registry_tags %}
+
+{% block title %}{% if title %}{{ title }} · {% endif %}{{ site_header|default:"Registry Admin" }}{% endblock %}
+
+{% block branding %}
+{% site_logo_url as logo_url %}
+<a href="{% url 'admin:index' %}" id="site-name" style="display:flex;align-items:center;gap:.6rem;text-decoration:none">
+  {% if logo_url %}
+  <img src="{{ logo_url }}" alt="Logo"
+       style="height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1)"
+       onerror="this.style.display='none'">
+  {% endif %}
+  <span class="denbi-brand">{{ site_header|default:"de.NBI Registry" }}</span>
+</a>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+
+/* =============================================================================
+   de.NBI Registry — Admin CSS
+   Strategy: targeted overrides only. Never override color/background on form
+   inputs globally — only scope them within Django admin's known containers.
+   ============================================================================= */
+
+/* ── Font ─────────────────────────────────────────────────────────────────── */
+body { font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+code, pre, kbd { font-family: 'IBM Plex Mono', monospace; }
+
+/* ── Header — sticky ──────────────────────────────────────────────────────── */
+#header {
+  background: linear-gradient(135deg, #182b09 0%, #2b4a0f 55%, #3b6318 100%) !important;
+  border-bottom: 3px solid #5c9d25 !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3) !important;
+}
+#header a#site-name { text-decoration: none; }
+#header .denbi-brand {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -.01em;
+}
+#user-tools a { color: #9be44a; }
+#user-tools a:hover { color: #fff; }
+
+/* ── Breadcrumbs — sticky below header ────────────────────────────────────── */
+div.breadcrumbs {
+  background: #f0f7e6 !important;
+  border-bottom: 1px solid #c8e49e !important;
+  color: #1a3a06 !important;        /* dark green text — high contrast on pale green bg */
+  font-size: .82rem !important;
+  position: sticky !important;
+  top: 46px !important;             /* matches #header height (43px content + 3px border) */
+  z-index: 990 !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06) !important;
+}
+div.breadcrumbs a {
+  color: #2e6b0a !important;        /* darker green — readable on #f0f7e6 */
+  font-weight: 500 !important;
+  text-decoration: none !important;
+}
+div.breadcrumbs a:hover { color: #1a3a06 !important; text-decoration: underline !important; }
+/* Current page (non-link) breadcrumb */
+div.breadcrumbs > a:last-of-type,
+div.breadcrumbs .this-page { color: #1a3a06 !important; font-weight: 600 !important; }
+div.breadcrumbs a { color: #4a7e1c; }
+
+/* ── Module headings (sidebar + dashboard cards) ──────────────────────────── */
+/* Use attribute selector to beat Django's own specificity without !important */
+div.module h2,
+div.module > h2,
+table.module caption,
+#nav-sidebar .module h2,
+#content-related .module h2,
+#changelist-filter h2 {
+  background: #f0f7e6 !important;
+  color: #2e5010 !important;
+  font-size: .7rem !important;
+  font-weight: 700 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid #c8e49e !important;
+}
+div.module { border-radius: 6px; overflow: hidden; }
+
+/* ── Result table ─────────────────────────────────────────────────────────── */
+#changelist-form .results {
+  border-radius: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#result_list { min-width: 700px; }
+#result_list thead th {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+#result_list tbody td {
+  font-size: .875rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+#result_list tbody td:nth-child(2) { white-space: normal; min-width: 140px; }
+#result_list a { color: #5c9d25; font-weight: 500; }
+
+/* ── Inline tabular — horizontal scroll, no overflow clipping ─────────────── */
+.inline-group { border-radius: 6px; overflow: hidden; margin-top: 1.25rem; }
+.inline-group h2 {
+  background: linear-gradient(135deg, #182b09, #3b6318);
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.tabular { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tabular .results { overflow-x: auto; }
+.tabular table { min-width: 520px; }
+
+/* ── Fieldsets in change form ─────────────────────────────────────────────── */
+fieldset { border-radius: 6px; overflow: hidden; margin-bottom: 1rem; }
+fieldset > h2,
+.inline-group > h2,
+.inline-group > fieldset > h2 {
+  background: #f0f7e6 !important;
+  color: #2e5010 !important;
+  font-size: .7rem !important;
+  font-weight: 700 !important;
+  letter-spacing: .07em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid #c8e49e !important;
+  padding: .52rem 1rem !important;
+  margin: 0 !important;
+}
+/* Dark inline group headers stay dark-green */
+.inline-group > h2 {
+  background: linear-gradient(135deg, #182b09, #3b6318) !important;
+  color: #fff !important;
+  border-bottom-color: #5c9d25 !important;
+}
+
+/* ── Submit row ────────────────────────────────────────────────────────────── */
+.submit-row { border-radius: 6px; margin-top: 1rem; }
+.submit-row input[name=_save] {
+  background: #5c9d25;
+  border-color: #4a7e1c;
+  color: #fff;
+}
+.submit-row input[name=_save]:hover { background: #4a7e1c; }
+
+/* ── Object-tools buttons ─────────────────────────────────────────────────── */
+.object-tools a.historylink,
+.object-tools a {
+  background: #5c9d25;
+  border-radius: 4px;
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+/* ── Inline API key panel — keep content visible, fix overflow ────────────── */
+.inline-related .tabular td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.inline-related .tabular td:first-child { max-width: 180px; }
+
+/* ── Status badge colours (used in list_display custom HTML) ──────────────── */
+.status-badge { display: inline-block; border-radius: 20px; padding: 2px 9px; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+
+/* ── Actions bar ──────────────────────────────────────────────────────────── */
+.actions select, .actions label { font-size: .8rem; }
+
+/* ── Paginator ────────────────────────────────────────────────────────────── */
+.paginator a { color: #5c9d25; }
+.paginator .this-page { font-weight: 700; }
+
+/* ── Messages ─────────────────────────────────────────────────────────────── */
+ul.messagelist li code { display: block; margin-top: .35rem; padding: .3rem .6rem; border-radius: 4px; font-size: .8rem; word-break: break-all; font-family: 'IBM Plex Mono', monospace; background: rgba(0,0,0,.07); }
+
+/* ── Filter sidebar ────────────────────────────────────────────────────────── */
+/* filter sidebar h2 already covered by div.module h2 rule above */
+#changelist-filter li.selected a { color: #5c9d25; font-weight: 600; }
+#changelist-filter a { color: #475569; }
+
+/* ── Approve / Reject action buttons — make them visible in the actions bar ── */
+select[name=action] option { font-size: .875rem; }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  #header.pinned, div.breadcrumbs.pinned { position: relative !important; }
+  #changelist-filter { margin-left: 0; margin-top: 1rem; }
+}
+
+</style>
+<script>
+(function () {
+  "use strict";
+  var hdr, bc, spacer, hdrH, bcH, threshold;
+
+  function init() {
+    hdr = document.getElementById("header");
+    bc  = document.querySelector("div.breadcrumbs");
+    if (!hdr) return;
+
+    spacer = document.getElementById("denbi-sticky-spacer");
+    if (!spacer) {
+      spacer = document.createElement("div");
+      spacer.id = "denbi-sticky-spacer";
+      hdr.parentNode.insertBefore(spacer, hdr);
+    }
+
+    measure();
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", function () { measure(); onScroll(); }, { passive: true });
+  }
+
+  function measure() {
+    hdr.classList.remove("pinned");
+    if (bc) bc.classList.remove("pinned");
+    spacer.style.display = "none";
+    hdrH      = hdr.offsetHeight;
+    bcH       = bc ? bc.offsetHeight : 0;
+    threshold = hdr.getBoundingClientRect().top + window.pageYOffset;
+  }
+
+  function onScroll() {
+    if (window.pageYOffset > threshold) {
+      hdr.classList.add("pinned");
+      spacer.style.display = "block";
+      spacer.style.height  = (hdrH + bcH) + "px";
+      if (bc) { bc.classList.add("pinned"); bc.style.top = hdrH + "px"; }
+    } else {
+      hdr.classList.remove("pinned");
+      if (bc) bc.classList.remove("pinned");
+      spacer.style.display = "none";
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+{% endblock %}

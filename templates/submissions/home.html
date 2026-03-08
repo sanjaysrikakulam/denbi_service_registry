@@ -1,0 +1,32 @@
+{% extends "base/base.html" %}
+{% block title %}de.NBI Service Registry{% endblock %}
+{% block content %}
+<div class="row justify-content-center py-4">
+  <div class="col-lg-8 text-center">
+    <h1 class="mb-3">de.NBI &amp; ELIXIR-DE Service Registration</h1>
+    <p class="lead text-muted mb-5">
+      Register your bioinformatics service with the German Network for Bioinformatics Infrastructure.
+    </p>
+    <div class="row g-4">
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Register a New Service</h5>
+            <p class="card-text text-muted">Submit a new service for inclusion in the de.NBI service catalogue.</p>
+            <a href="{% url 'submissions:register' %}" class="btn btn-primary">Start Registration</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Update Existing Registration</h5>
+            <p class="card-text text-muted">Edit a submission you previously made using your API key.</p>
+            <a href="{% url 'submissions:update' %}" class="btn btn-outline-primary">Update Registration</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

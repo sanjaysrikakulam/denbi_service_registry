@@ -1,0 +1,42 @@
+de.NBI Service Registry — Notification
+========================================
+
+Event: {{ event|upper }}
+Service: {{ submission.service_name }}
+Status: {{ submission.get_status_display }}
+Submission ID: {{ submission.id }}
+Timestamp: {{ submission.updated_at|date:"Y-m-d H:i" }} UTC
+
+--- SERVICE DETAILS ---
+
+Submitter: {{ submission.submitter_name }}
+Host Institute: {{ submission.host_institute }}
+Service Centre: {{ submission.service_center }}
+ELIXIR-DE Registration: {% if submission.register_as_elixir %}Yes{% else %}No{% endif %}
+
+Description:
+{{ submission.service_description }}
+
+Categories: {{ categories|join:", " }}
+Year Established: {{ submission.year_established }}
+Website: {{ submission.website_url }}
+License: {{ submission.get_license_display }}
+
+Publications/PMIDs:
+{{ submission.publications_pmids }}
+
+Responsible PIs:
+{% for pi in pis %}- {{ pi }}
+{% endfor %}
+
+KPI Monitoring: {{ submission.get_kpi_monitoring_display }}
+KPI Start Year: {{ submission.kpi_start_year }}
+
+Public Contact: {{ submission.public_contact_email }}
+Internal Contact: {{ submission.internal_contact_name }} <{{ submission.internal_contact_email }}>
+
+--- END OF NOTIFICATION ---
+
+de.NBI Administration Office
+{{ CONTACT_EMAIL }}
+{{ WEBSITE_URL }}

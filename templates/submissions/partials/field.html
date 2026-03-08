@@ -1,0 +1,52 @@
+{# Reusable form field partial with Bootstrap styling and HTMX inline validation #}
+{# Usage: {% include "submissions/partials/field.html" with field=form.field_name required=True %} #}
+<div class="mb-3{% if field.errors %} has-error{% endif %}" id="field-wrapper-{{ field.html_name }}">
+  <label for="{{ field.id_for_label }}"
+         class="form-label{% if field.errors %} text-danger fw-semibold{% endif %}">
+    {{ field.label }}
+    {% if required %}<span class="required-star" aria-label="required">*</span>{% endif %}
+  </label>
+
+  {# Render the widget — HTMX validates on blur #}
+  <div hx-post="{% url 'submissions:validate_field' %}"
+       hx-trigger="change from:find input,select,textarea"
+       hx-include="[name='{{ field.html_name }}']"
+       hx-vals='{"field": "{{ field.html_name }}"}'
+       hx-target="#field-errors-{{ field.html_name }}"
+       hx-swap="innerHTML">
+    {# Inject is-invalid Bootstrap class onto the widget when there are errors #}
+    {% if field.errors %}
+      {% with field_class=field.field.widget.attrs.class|default:"form-control" %}
+        {{ field.as_widget }}
+      {% endwith %}
+      <script>
+        (function(){
+          var w = document.getElementById('field-wrapper-{{ field.html_name }}');
+          if(w) w.querySelectorAll('input,select,textarea').forEach(function(el){
+            el.classList.add('is-invalid');
+          });
+        })();
+      </script>
+    {% else %}
+      {{ field }}
+    {% endif %}
+  </div>
+
+  {# Help text #}
+  {% with help=help_override|default:field.help_text %}
+  {% if help %}
+  <div class="form-text text-muted">{{ help }}</div>
+  {% endif %}
+  {% endwith %}
+
+  {# Validation errors — styled as Bootstrap invalid-feedback #}
+  <div id="field-errors-{{ field.html_name }}">
+    {% if field.errors %}
+    {% for error in field.errors %}
+    <div class="invalid-feedback d-block" role="alert">
+      <strong>⚠ {{ error }}</strong>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+</div>

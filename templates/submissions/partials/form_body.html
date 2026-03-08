@@ -1,0 +1,163 @@
+{% comment %}
+Form body partial — shared by register.html and edit.html.
+Contains all section cards. The wrapping <form> tag and submit button
+are defined in the parent template so each can have its own action/labels.
+{% endcomment %}
+{% load i18n %}
+
+<!-- bio.tools prefill banners -->
+{% if SITE.features.biotools_prefill %}
+<div id="biotools-prefill-banner" class="alert alert-info alert-dismissible mb-4 d-none" role="alert">
+  <strong>bio.tools data found.</strong>
+  <span id="biotools-prefill-fields" class="text-muted small ms-1"></span>
+  <div class="mt-2 d-flex gap-2">
+    <button type="button" id="biotools-apply-btn" class="btn btn-sm btn-info">Apply prefill</button>
+    <button type="button" id="biotools-dismiss-btn" class="btn btn-sm btn-outline-secondary">Dismiss</button>
+  </div>
+</div>
+<div id="biotools-error-banner" class="alert alert-warning mb-4 d-none" role="alert">
+  <strong>bio.tools lookup failed:</strong> <span id="biotools-error-msg"></span>
+</div>
+{% endif %}
+
+{% if form.errors %}
+<div class="alert alert-danger border-danger" role="alert">
+  <div class="d-flex align-items-start gap-2">
+    <span style="font-size:1.4rem">⚠</span>
+    <div>
+      <strong>Please correct {{ form.errors|length }} error{{ form.errors|length|pluralize }} before submitting.</strong>
+      <ul class="mb-0 mt-1 small">
+        {% for field in form %}
+          {% if field.errors %}
+            <li><a href="#field-wrapper-{{ field.html_name }}" class="alert-link">{{ field.label }}</a>: {{ field.errors|join:", " }}</li>
+          {% endif %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- A — General -->
+<div class="card section-card mb-4" id="section-a">
+  <div class="card-header"><span class="me-2">📋</span>A — General Information</div>
+  <div class="card-body">
+    {% include "submissions/partials/field.html" with field=form.date_of_entry required=True %}
+    <div class="row g-3">
+      <div class="col-md-6">
+        {% include "submissions/partials/field.html" with field=form.submitter_first_name required=True %}
+      </div>
+      <div class="col-md-6">
+        {% include "submissions/partials/field.html" with field=form.submitter_last_name required=True %}
+      </div>
+    </div>
+    {% include "submissions/partials/field.html" with field=form.submitter_affiliation required=True %}
+    {% include "submissions/partials/field.html" with field=form.register_as_elixir required=True %}
+  </div>
+</div>
+
+<!-- B — Service Master Data -->
+<div class="card section-card mb-4" id="section-b">
+  <div class="card-header"><span class="me-2">🔬</span>B — Service Master Data</div>
+  <div class="card-body">
+    {% include "submissions/partials/field.html" with field=form.service_name required=True %}
+    {% include "submissions/partials/field.html" with field=form.service_description required=True help_override="Describe your service. Mention if AI/ML/Deep Learning is used, programming language, data types, etc." %}
+    {% include "submissions/partials/field.html" with field=form.year_established required=True %}
+    {% include "submissions/partials/field.html" with field=form.service_categories required=True %}
+    {% include "submissions/partials/field.html" with field=form.is_toolbox required=True %}
+    <div id="toolbox-name-wrapper" {% if not form.is_toolbox.value %}style="display:none"{% endif %}>
+      {% include "submissions/partials/field.html" with field=form.toolbox_name %}
+    </div>
+    {% include "submissions/partials/field.html" with field=form.user_knowledge_required %}
+    {% include "submissions/partials/edam_fields.html" %}
+    {% include "submissions/partials/field.html" with field=form.publications_pmids required=True %}
+  </div>
+</div>
+
+<!-- C — Responsibilities -->
+<div class="card section-card mb-4" id="section-c">
+  <div class="card-header"><span class="me-2">👥</span>C — Responsibilities &amp; Responsiveness</div>
+  <div class="card-body">
+    {% include "submissions/partials/field.html" with field=form.responsible_pis required=True help_override="Hold Ctrl/Cmd to select multiple PIs. Choose 'Associated partner' if your PI is not listed." %}
+    <div id="associated-partner-wrapper" style="display:none">
+      {% include "submissions/partials/field.html" with field=form.associated_partner_note %}
+    </div>
+    {% include "submissions/partials/field.html" with field=form.host_institute required=True %}
+    {% include "submissions/partials/field.html" with field=form.service_center required=True %}
+    <hr class="my-3">
+    <p class="text-muted small"><strong>Public contact</strong> — this email will be displayed on the de.NBI services page.</p>
+    {% include "submissions/partials/field.html" with field=form.public_contact_email required=True %}
+    <hr class="my-3">
+    <p class="text-muted small"><strong>Internal contact</strong> — used only by the de.NBI administration office. Not publicly visible.</p>
+    {% include "submissions/partials/field.html" with field=form.internal_contact_name required=True %}
+    {% include "submissions/partials/field.html" with field=form.internal_contact_email required=True %}
+    {% include "submissions/partials/field.html" with field=form.internal_contact_email_confirm required=True %}
+  </div>
+</div>
+
+<!-- D — Links -->
+<div class="card section-card mb-4" id="section-d">
+  <div class="card-header"><span class="me-2">🔗</span>D — Websites &amp; Links</div>
+  <div class="card-body">
+    {% include "submissions/partials/field.html" with field=form.website_url required=True %}
+    {% include "submissions/partials/field.html" with field=form.terms_of_use_url required=True %}
+    {% include "submissions/partials/field.html" with field=form.license required=True %}
+    {% include "submissions/partials/field.html" with field=form.github_url %}
+    {% include "submissions/partials/field.html" with field=form.biotools_url %}
+    {% include "submissions/partials/field.html" with field=form.fairsharing_url %}
+    {% include "submissions/partials/field.html" with field=form.other_registry_url %}
+  </div>
+</div>
+
+<!-- E — KPIs -->
+<div class="card section-card mb-4" id="section-e">
+  <div class="card-header"><span class="me-2">📊</span>E — Key Performance Indicators (KPIs)</div>
+  <div class="card-body">
+    <p class="text-muted small">
+      KPI requirements depend on service category. See the
+      <a href="{{ SITE.links.kpi_cheatsheet }}" target="_blank" rel="noopener noreferrer">de.NBI KPI Compass</a> for guidance.
+    </p>
+    {% include "submissions/partials/field.html" with field=form.kpi_monitoring required=True %}
+    <div id="kpi-start-year-wrapper" {% if form.kpi_monitoring.value == 'planned' %}style="display:none"{% endif %}>
+      {% include "submissions/partials/field.html" with field=form.kpi_start_year required=True %}
+    </div>
+  </div>
+</div>
+
+<!-- F — Discoverability -->
+<div class="card section-card mb-4" id="section-f">
+  <div class="card-header"><span class="me-2">🏷️</span>F — Search Tags, Discoverability &amp; Outreach</div>
+  <div class="card-body">
+    {% include "submissions/partials/field.html" with field=form.keywords_uncited %}
+    {% include "submissions/partials/field.html" with field=form.keywords_seo %}
+    {% include "submissions/partials/field.html" with field=form.outreach_consent required=True %}
+    {% include "submissions/partials/field.html" with field=form.survey_participation required=True %}
+    {% include "submissions/partials/field.html" with field=form.comments %}
+  </div>
+</div>
+
+<!-- G — Consent -->
+<div class="card section-card mb-4" id="section-g">
+  <div class="card-header"><span class="me-2">🔒</span>G — Data Protection &amp; Consent</div>
+  <div class="card-body">
+    <p class="small">
+      This form has been created by the de.NBI Office.
+      Person-related data will exclusively be used by the de.NBI Administration Office
+      for matters related to the de.NBI Service registration process.
+      <a href="{{ SITE.links.data_protection }}" target="_blank" rel="noopener noreferrer">Data protection information</a>
+      and <a href="{{ PRIVACY_POLICY_URL }}" target="_blank" rel="noopener noreferrer">privacy policy</a>.
+    </p>
+    <div class="consent-block">
+      <div class="form-check">
+        {{ form.data_protection_consent }}
+        <label class="form-check-label" for="{{ form.data_protection_consent.id_for_label }}">
+          {{ form.data_protection_consent.label }}
+        </label>
+        {% if form.data_protection_consent.errors %}
+        <div class="text-danger small mt-1 fw-semibold">⚠ {{ form.data_protection_consent.errors }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>

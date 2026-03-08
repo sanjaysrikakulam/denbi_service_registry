@@ -1,0 +1,75 @@
+# =============================================================================
+# de.NBI Service Registry — CI/CD Docker Compose
+# =============================================================================
+# Usage:
+#   docker compose -f docker/docker-compose.ci.yml run --rm test
+#   docker compose -f docker/docker-compose.ci.yml run --rm lint
+#   docker compose -f docker/docker-compose.ci.yml run --rm audit
+# =============================================================================
+
+services:
+
+  test:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: runtime
+    command: >
+      sh -c "
+        python manage.py migrate --run-syncdb &&
+        pytest tests/ -v --tb=short --cov=apps --cov-report=term-missing --cov-report=xml
+      "
+    environment:
+      - SECRET_KEY=ci-only-secret-key-not-for-production
+      - DB_PASSWORD=ci
+      - REDIS_PASSWORD=ci
+      - DEBUG=true
+      - CAPTCHA_ENABLED=false
+      - CELERY_TASK_ALWAYS_EAGER=True
+    volumes:
+      - ../:/app
+    networks:
+      - ci
+
+  lint:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: runtime
+    command: ruff check apps/ config/ tests/
+    environment:
+      - SECRET_KEY=ci-only-secret-key
+      - DB_PASSWORD=ci
+      - REDIS_PASSWORD=ci
+    volumes:
+      - ../:/app
+    networks:
+      - ci
+
+  audit:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: runtime
+    command: pip-audit -r requirements/production.txt
+    networks:
+      - ci
+
+  typecheck:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: runtime
+    command: mypy apps/ config/
+    environment:
+      - SECRET_KEY=ci-only-secret-key
+      - DB_PASSWORD=ci
+      - REDIS_PASSWORD=ci
+    volumes:
+      - ../:/app
+    networks:
+      - ci
+
+networks:
+  ci:
+    driver: bridge

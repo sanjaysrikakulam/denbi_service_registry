@@ -1,0 +1,253 @@
+# =============================================================================
+# de.NBI Service Registry — Docker Swarm Stack File
+# =============================================================================
+# Purpose: Production deployment on a Docker Swarm cluster.
+#          Uses Docker Secrets for credentials (more secure than env files).
+#
+# Prerequisites:
+#   docker swarm init        (on manager node)
+#
+# Create secrets (once, before deploying):
+#   printf 'mysecretkey' | docker secret create django_secret_key -
+#   printf 'dbpassword'  | docker secret create db_password -
+#   printf 'redispass'   | docker secret create redis_password -
+#   printf 'smtppass'    | docker secret create smtp_password -
+#
+# Deploy:
+#   docker stack deploy -c docker/docker-compose.swarm.yml denbi
+#
+# Update the web service (rolling restart):
+#   docker service update --image denbi-registry:v1.2.0 denbi_web
+#
+# Scale workers:
+#   docker service scale denbi_worker=4
+#
+# Remove the stack:
+#   docker stack rm denbi
+# =============================================================================
+
+version: "3.9"
+
+secrets:
+  django_secret_key:
+    external: true
+  db_password:
+    external: true
+  redis_password:
+    external: true
+  smtp_password:
+    external: true
+
+networks:
+  backend:
+    driver: overlay
+    attachable: false
+
+volumes:
+  pg_data:
+    driver: local
+  redis_data:
+    driver: local
+  static_vol:
+    driver: local
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Nginx — only service exposing external ports
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - target: 80
+        published: 80
+        mode: host
+      - target: 443
+        published: 443
+        mode: host
+    configs:
+      - source: nginx_conf
+        target: /etc/nginx/nginx.conf
+    volumes:
+      - static_vol:/app/staticfiles:ro
+      - type: bind
+        source: /etc/letsencrypt/live/registry.denbi.de
+        target: /etc/nginx/ssl
+        read_only: true
+    networks:
+      - backend
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        order: start-first     # Start new instance before stopping old
+        failure_action: rollback
+      placement:
+        constraints:
+          - node.role == manager
+
+  # ---------------------------------------------------------------------------
+  # Django web — horizontally scalable
+  # ---------------------------------------------------------------------------
+  web:
+    image: denbi-registry:${IMAGE_TAG:-latest}
+    command: >
+      gunicorn config.wsgi:application
+        --bind 0.0.0.0:8000
+        --workers 4
+        --timeout 60
+        --keep-alive 5
+        --access-logfile -
+        --error-logfile -
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings
+      # Secrets are mounted as files; Django reads them via environment
+      - SECRET_KEY_FILE=/run/secrets/django_secret_key
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+    secrets:
+      - django_secret_key
+      - db_password
+      - redis_password
+    volumes:
+      - static_vol:/app/staticfiles
+    networks:
+      - backend
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: any
+        delay: 5s
+      update_config:
+        parallelism: 1         # Update one replica at a time (zero-downtime)
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Celery worker — async email tasks
+  # ---------------------------------------------------------------------------
+  worker:
+    image: denbi-registry:${IMAGE_TAG:-latest}
+    command: celery -A config worker --loglevel=info --concurrency=4
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - SECRET_KEY_FILE=/run/secrets/django_secret_key
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - EMAIL_HOST_PASSWORD_FILE=/run/secrets/smtp_password
+    secrets:
+      - django_secret_key
+      - db_password
+      - redis_password
+      - smtp_password
+    networks:
+      - backend
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      update_config:
+        order: stop-first
+        failure_action: rollback
+      resources:
+        limits:
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Celery beat — periodic tasks
+  # ---------------------------------------------------------------------------
+  beat:
+    image: denbi-registry:${IMAGE_TAG:-latest}
+    command: celery -A config beat --loglevel=info
+    environment:
+      - SECRET_KEY_FILE=/run/secrets/django_secret_key
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+    secrets:
+      - django_secret_key
+      - db_password
+      - redis_password
+    networks:
+      - backend
+    deploy:
+      replicas: 1    # beat must run as a single instance only
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.role == manager
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL
+  # ---------------------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: denbi_registry
+      POSTGRES_USER: denbi
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      placement:
+        constraints:
+          - node.labels.role == db   # Pin DB to a specific node with persistent storage
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U denbi -d denbi_registry"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Redis
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    command: >
+      sh -c "redis-server --requirepass $$(cat /run/secrets/redis_password)
+             --maxmemory 256mb --maxmemory-policy allkeys-lru"
+    secrets:
+      - redis_password
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+configs:
+  nginx_conf:
+    file: ./nginx/nginx.conf
