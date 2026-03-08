@@ -1,6 +1,6 @@
 # Secrets — never commit these
 .secrets.toml
-.env
+.env*
 *.pem
 *.key
 
