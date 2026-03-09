@@ -92,7 +92,7 @@ class BioToolsClient:
     ):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self.user_agent = user_agent
+        self.user_agent = user_agent or "denbi-registry/1.0 (https://bio.tools)"
 
     def _get(self, path: str, params: dict | None = None) -> dict:
         """Make a GET request and return parsed JSON."""

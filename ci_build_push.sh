@@ -16,6 +16,7 @@
 #   REGISTRY_USERNAME   your-username               (required)
 #   REGISTRY_PASSWORD   your-token-or-password      (required)
 #   GITHUB_REPO         git@github.com:org/repo.git (required)
+#   IMAGE_ORGANIZATION  denbi                       (default: denbi; used for labels and future multi-repo support)
 #   IMAGE_NAME          denbi-registry              (default: denbi-registry)
 #   IMAGE_AUTHOR        Your Name                   (default: Your Name <your.email@example.com>)
 #   GIT_BRANCH          main                        (default: main)
@@ -56,7 +57,9 @@ step() { echo -e "\n${BOLD}━━━━━━━━━━━━━━━━━�
 REGISTRY_HOST="${REGISTRY_HOST:?REGISTRY_HOST is required}"
 REGISTRY_USERNAME="${REGISTRY_USERNAME:?REGISTRY_USERNAME is required}"
 REGISTRY_PASSWORD="${REGISTRY_PASSWORD:?REGISTRY_PASSWORD is required}"
-GITHUB_REPO="${GITHUB_REPO:?GITHUB_REPO is required (e.g. git@github.com:org/repo.git)}"
+# GITHUB_REPO="${GITHUB_REPO:?GITHUB_REPO is required (e.g. git@github.com:org/repo.git)}"
+IMAGE_ORGANIZATION="${IMAGE_ORGANIZATION:-denbi}"
+IMAGE_AUTHOR="${IMAGE_AUTHOR:-deNBI Service Registry CI}"
 IMAGE_NAME="${IMAGE_NAME:-denbi-registry}"
 GIT_BRANCH="${GIT_BRANCH:-main}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
@@ -64,7 +67,7 @@ BUILD_PLATFORM="${BUILD_PLATFORM:-linux/amd64}"
 SKIP_TESTS="${SKIP_TESTS:-0}"
 LOCAL_CLONE_DIR="${LOCAL_CLONE_DIR:-/tmp/denbi-registry-ci}"
 
-FULL_IMAGE="${REGISTRY_HOST}/${IMAGE_NAME}"
+FULL_IMAGE="${REGISTRY_HOST}/${IMAGE_ORGANIZATION}/${IMAGE_NAME}"
 
 # ── Pre-flight checks ─────────────────────────────────────────────────────────
 step "Pre-flight checks"
@@ -104,11 +107,11 @@ ok "Buildx builder: ci-builder"
 # GIT_SHA_FULL=$(git rev-parse HEAD)
 # GIT_COMMIT_MSG=$(git log -1 --pretty=%s)
 # GIT_AUTHOR=$(git log -1 --pretty=%an)
-# BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # log "Branch : ${GIT_BRANCH}"
 # log "Commit : ${GIT_SHA} — ${GIT_COMMIT_MSG} (${GIT_AUTHOR})"
-# log "Date   : ${BUILD_DATE}"
+log "Date   : ${BUILD_DATE}"
 
 # ── Run tests ─────────────────────────────────────────────────────────────────
 if [[ "${SKIP_TESTS}" == "1" ]]; then
@@ -160,6 +163,18 @@ log "Tags:"
 # log "  ${SHA_TAG}"
 log "  ${NAMED_TAG}"
 
+# Build cache ref
+CACHE_REF="${FULL_IMAGE}:buildcache"
+
+# Try to fetch cache manifest, if it fails, use local cache only
+if docker buildx imagetools inspect "${CACHE_REF}" &>/dev/null; then
+  log "Using remote cache from ${CACHE_REF}"
+  CACHE_ARGS="--cache-from type=registry,ref=${CACHE_REF} --cache-to type=registry,ref=${CACHE_REF},mode=max"
+else
+  log "No remote cache found, using local cache only"
+  CACHE_ARGS="--cache-from type=local,src=/tmp/.buildx-cache --cache-to type=local,dest=/tmp/.buildx-cache,mode=max"
+fi
+
 docker buildx build \
   --platform "${BUILD_PLATFORM}" \
   --target runtime \
@@ -169,8 +184,7 @@ docker buildx build \
   --label "org.opencontainers.image.version=${IMAGE_TAG}" \
   --label "org.opencontainers.image.title=${IMAGE_NAME}" \
   --label "org.opencontainers.image.authors=${IMAGE_AUTHOR}" \
-  --cache-from "type=registry,ref=${FULL_IMAGE}:buildcache" \
-  --cache-to   "type=registry,ref=${FULL_IMAGE}:buildcache,mode=max" \
+  ${CACHE_ARGS} \
   .
 
 ok "Image pushed:"

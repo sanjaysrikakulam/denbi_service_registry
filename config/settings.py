@@ -123,6 +123,7 @@ INSTALLED_APPS = [
 # ---------------------------------------------------------------------------
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -214,10 +215,10 @@ CSRF_COOKIE_SAMESITE = "Strict"
 X_FRAME_OPTIONS = "DENY"
 
 # EDAM OWL URL: site.toml → [edam] owl_url, overridden by EDAM_OWL_URL env var
-EDAM_OWL_URL = env("EDAM_OWL_URL", _sc_edam.get("owl_url", "https://edamontology.org/EDAM_stable.owl"))
+EDAM_OWL_URL = env("EDAM_OWL_URL", default=None) or _sc_edam.get("owl_url", "https://edamontology.org/EDAM_stable.owl")
 
 # Admin URL prefix: site.toml → [admin] url_prefix, overridden by ADMIN_URL_PREFIX env var
-ADMIN_URL_PREFIX = env("ADMIN_URL_PREFIX", _sc_admin.get("url_prefix", "admin-denbi"))
+ADMIN_URL_PREFIX = env("ADMIN_URL_PREFIX", default=None) or _sc_admin.get("url_prefix", "admin")
 RATE_LIMIT_SUBMIT = env("RATE_LIMIT_SUBMIT", "10/h")
 RATE_LIMIT_UPDATE = env("RATE_LIMIT_UPDATE", "20/h")
 
