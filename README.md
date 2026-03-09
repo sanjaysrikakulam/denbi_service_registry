@@ -51,11 +51,7 @@ Internet
 Host Nginx (nginx/host/registry.denbi.de.conf)
   │  TLS termination, certbot, IP allowlist
   │
-  ▼ :8080 (127.0.0.1 only)
-Docker Nginx
-  │  Rate limiting, static files, proxy
-  │
-  ▼ :8000 (internal Docker network)
+  ▼ :8080 (de.NBI service registry VM)
 Django / Gunicorn (web)
   │
   ├─▶ PostgreSQL (db)
