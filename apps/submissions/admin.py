@@ -52,12 +52,12 @@ class SubmissionAPIKeyInline(admin.TabularInline):
     @admin.display(description="Status")
     def status_display(self, obj):
         if obj.is_active:
-            return format_html(
-                '<span style="color:#166534;font-weight:600;font-size:.8rem">'
+            return mark_safe(
+                '<span style="color:var(--link-fg);font-weight:600;font-size:.8rem">'
                 '● Active</span>'
             )
-        return format_html(
-            '<span style="color:#9ca3af;font-size:.8rem">○ Revoked</span>'
+        return mark_safe(
+            '<span style="color:var(--body-quiet-color);font-size:.8rem">○ Revoked</span>'
         )
 
     def has_add_permission(self, request, obj=None):
@@ -219,20 +219,22 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
     @admin.display(description="ELIXIR")
     def elixir_badge(self, obj):
         if obj.register_as_elixir:
-            return format_html(
+            return mark_safe(
                 '<span style="color:#0369a1;font-size:.75rem;font-weight:700">✓ ELIXIR</span>'
             )
-        return format_html('<span style="color:#d1d5db;font-size:.75rem">—</span>')
+        return mark_safe(
+            '<span style="color:var(--body-quiet-color);font-size:.75rem">—</span>'
+        )
 
     @admin.display(description="API Keys")
     def key_count(self, obj):
         active = obj.api_keys.filter(is_active=True).count()
         total  = obj.api_keys.count()
         if active == 0:
-            return format_html('<span style="color:#9ca3af;font-size:.8rem">0 / {}</span>', total)
+            return format_html('<span style="color:var(--body-quiet-color);font-size:.8rem">0 / {}</span>', total)
         return format_html(
             '<span style="color:#166534;font-size:.8rem;font-weight:600">{}</span>'
-            '<span style="color:#9ca3af;font-size:.8rem"> / {}</span>',
+            '<span style="color:var(--body-quiet-color);font-size:.8rem"> / {}</span>',
             active, total,
         )
 
@@ -276,7 +278,8 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
             )
             check = "✓ " if active else ""
             buttons.append(
-                f'<button type="submit" name="{name}" value="1" style="{style}" {"disabled" if active else ""}>'                f'{check}{label}</button>'
+                f'<button type="submit" name="{name}" value="1" style="{style}" {"disabled" if active else ""}>'
+                f'{check}{label}</button>'
             )
         return mark_safe(
             '<div style="display:flex;gap:.5rem;flex-wrap:wrap">'
@@ -288,7 +291,7 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
     def key_management_panel(self, obj):
         if not obj.pk:
             return "Save the record first."
-        return format_html(
+        return mark_safe(
             """
             <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
               <button type="submit" name="_issue_new_key" value="1"
@@ -307,14 +310,15 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
                 Revoke all keys
               </button>
             </div>
-            <p style="margin:.4rem 0 0;font-size:.78rem;color:#6b7280">
+            <p style="margin:.4rem 0 0;font-size:.78rem;color:var(--body-quiet-color)">
               New key label (optional):
               <input type="text" name="new_key_label"
                      placeholder="e.g. &quot;Admin reset 2026-03&quot;"
-                     style="border:1px solid #d1d5db;border-radius:5px;
+                     style="border:1px solid var(--border-color);border-radius:5px;
+                            background:var(--body-bg);color:var(--body-fg);
                             padding:.25rem .5rem;font-size:.78rem;width:260px;margin-left:.3rem">
             </p>
-            """,
+            """
         )
 
     # ── Actions ──────────────────────────────────────────────────────────────
@@ -477,7 +481,7 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
     keys from either place.
     """
     list_display        = ("label", "submission_link", "scope_badge", "status_badge", "created_by", "created_at", "last_used_at")
-    list_display_links  = ("label",)   # only the label column links to the key's own change page
+    list_display_links  = ("label",)
     list_filter         = ("is_active", "submission__status")
     search_fields       = ("submission__service_name", "label", "created_by")
     readonly_fields     = ("id", "key_hash", "submission_link", "created_at", "last_used_at", "sibling_key_panel")
@@ -514,21 +518,21 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
     @admin.display(description="Status")
     def status_badge(self, obj):
         if obj.is_active:
-            return format_html(
-                '<span style="color:#166534;font-weight:700;font-size:.8rem">● Active</span>'
+            return mark_safe(
+                '<span style="color:var(--link-fg);font-weight:700;font-size:.8rem">● Active</span>'
             )
-        return format_html(
-            '<span style="color:#9ca3af;font-size:.8rem">○ Revoked</span>'
+        return mark_safe(
+            '<span style="color:var(--body-quiet-color);font-size:.8rem">○ Revoked</span>'
         )
 
     @admin.display(description="Scope")
     def scope_badge(self, obj):
         if obj.scope == "write":
-            return format_html(
+            return mark_safe(
                 '<span style="background:#dbeafe;color:#1e40af;border-radius:4px;'
                 'padding:2px 7px;font-size:.7rem;font-weight:700">✏ read-write</span>'
             )
-        return format_html(
+        return mark_safe(
             '<span style="background:#f0fdf4;color:#166534;border-radius:4px;'
             'padding:2px 7px;font-size:.7rem;font-weight:700">👁 read-only</span>'
         )
@@ -543,46 +547,57 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
         sub = obj.submission
         siblings = SubmissionAPIKey.objects.filter(submission=sub).order_by("-created_at")
 
-        # Build key table
         rows = []
         for k in siblings:
-            active_style = "color:#166534;font-weight:700" if k.is_active else "color:#9ca3af"
+            active_style = "color:var(--link-fg);font-weight:700" if k.is_active else "color:var(--body-quiet-color)"
             status_html  = "● Active" if k.is_active else "○ Revoked"
             this_marker  = " ◀ this key" if k.pk == obj.pk else ""
+            highlight    = "background:var(--darkened-bg);outline:2px solid var(--link-fg);" if k.pk == obj.pk else ""
             scope_html = (
-                '<span style="background:#dbeafe;color:#1e40af;border-radius:3px;padding:1px 5px;font-size:.7rem;font-weight:700">✏ rw</span>'
+                '<span style="background:#1e40af;color:#fff;border-radius:3px;padding:1px 5px;font-size:.7rem;font-weight:700">✏ rw</span>'
                 if k.scope == "write" else
-                '<span style="background:#f0fdf4;color:#166534;border-radius:3px;padding:1px 5px;font-size:.7rem;font-weight:700">👁 ro</span>'
+                '<span style="background:#166534;color:#fff;border-radius:3px;padding:1px 5px;font-size:.7rem;font-weight:700">👁 ro</span>'
             )
             rows.append(
-                f'<tr style="{"background:#f0fdf4;" if k.pk == obj.pk else ""}">'
-                f'<td style="padding:.3rem .6rem;font-family:monospace;font-size:.75rem">{k.key_hash[:16]}…</td>'
-                f'<td style="padding:.3rem .6rem;font-size:.8rem">{k.label}{this_marker}</td>'
-                f'<td style="padding:.3rem .6rem;font-size:.8rem">{k.created_by}</td>'
-                f'<td style="padding:.3rem .6rem;font-size:.8rem">{k.created_at.strftime("%Y-%m-%d %H:%M")}</td>'
-                f'<td style="padding:.3rem .6rem;font-size:.8rem;{active_style}">{status_html}</td>'
-                f'<td style="padding:.3rem .6rem">{scope_html}</td>'
-                f'</tr>'
+                format_html(
+                    '<tr style="{highlight}">'
+                    '<td style="padding:.3rem .6rem;font-family:monospace;font-size:.75rem;color:var(--body-fg)">{hash}…</td>'
+                    '<td style="padding:.3rem .6rem;font-size:.8rem;color:var(--body-fg)">{label}{marker}</td>'
+                    '<td style="padding:.3rem .6rem;font-size:.8rem;color:var(--body-fg)">{created_by}</td>'
+                    '<td style="padding:.3rem .6rem;font-size:.8rem;color:var(--body-fg)">{created_at}</td>'
+                    '<td style="padding:.3rem .6rem;font-size:.8rem;{active_style}">{status}</td>'
+                    '<td style="padding:.3rem .6rem">{scope}</td>'
+                    '</tr>',
+                    highlight=highlight,
+                    hash=k.key_hash[:16],
+                    label=k.label,
+                    marker=this_marker,
+                    created_by=k.created_by,
+                    created_at=k.created_at.strftime("%Y-%m-%d %H:%M"),
+                    active_style=active_style,
+                    status=status_html,
+                    scope=mark_safe(scope_html),
+                )
             )
 
-        table_html = (
+        table_html = mark_safe(
             '<table style="width:100%;border-collapse:collapse;margin-bottom:.8rem;'
-            'border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">'
-            '<thead><tr style="background:#f8fafc">'
+            'border:1px solid var(--border-color);border-radius:6px;overflow:hidden">'
+            '<thead><tr style="background:var(--darkened-bg)">'
             '<th style="padding:.3rem .6rem;font-size:.7rem;font-weight:700;text-transform:uppercase;'
-            'letter-spacing:.05em;color:#64748b;text-align:left">Hash prefix</th>'
+            'letter-spacing:.05em;color:var(--body-quiet-color);text-align:left">Hash prefix</th>'
             '<th style="padding:.3rem .6rem;font-size:.7rem;font-weight:700;text-transform:uppercase;'
-            'letter-spacing:.05em;color:#64748b;text-align:left">Label</th>'
+            'letter-spacing:.05em;color:var(--body-quiet-color);text-align:left">Label</th>'
             '<th style="padding:.3rem .6rem;font-size:.7rem;font-weight:700;text-transform:uppercase;'
-            'letter-spacing:.05em;color:#64748b;text-align:left">Created by</th>'
+            'letter-spacing:.05em;color:var(--body-quiet-color);text-align:left">Created by</th>'
             '<th style="padding:.3rem .6rem;font-size:.7rem;font-weight:700;text-transform:uppercase;'
-            'letter-spacing:.05em;color:#64748b;text-align:left">Created at</th>'
+            'letter-spacing:.05em;color:var(--body-quiet-color);text-align:left">Created at</th>'
             '<th style="padding:.3rem .6rem;font-size:.7rem;font-weight:700;text-transform:uppercase;'
-            'letter-spacing:.05em;color:#64748b;text-align:left">Status</th>'
+            'letter-spacing:.05em;color:var(--body-quiet-color);text-align:left">Status</th>'
             '<th style="padding:.3rem .6rem;font-size:.7rem;font-weight:700;text-transform:uppercase;'
-            'letter-spacing:.05em;color:#64748b;text-align:left">Scope</th>'
+            'letter-spacing:.05em;color:var(--body-quiet-color);text-align:left">Scope</th>'
             '</tr></thead>'
-            f'<tbody>{"".join(rows)}</tbody>'
+            '<tbody>' + ''.join(rows) + '</tbody>'
             '</table>'
         )
 
@@ -601,13 +616,16 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
             'padding:.38rem .85rem;font-size:.82rem;font-weight:600;cursor:pointer">'
             'Revoke all keys</button>'
             '</div>'
-            '<p style="margin:.3rem 0 0;font-size:.78rem;color:#6b7280;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">'
+            '<p style="margin:.3rem 0 0;font-size:.78rem;color:var(--body-quiet-color);'
+            'display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">'
             '<span>Label (optional): <input type="text" name="new_key_label" '
             'placeholder="e.g. CI pipeline 2026" '
-            'style="border:1px solid #d1d5db;border-radius:5px;padding:.25rem .5rem;'
+            'style="border:1px solid var(--border-color);border-radius:5px;padding:.25rem .5rem;'
+            'background:var(--body-bg);color:var(--body-fg);'
             'font-size:.78rem;width:180px;margin-left:.4rem"></span>'
-            '<span>Scope: <select name="new_key_scope" style="border:1px solid #d1d5db;'
-            'border-radius:5px;padding:.25rem .4rem;font-size:.78rem;margin-left:.3rem">'
+            '<span>Scope: <select name="new_key_scope" '
+            'style="border:1px solid var(--border-color);border-radius:5px;padding:.25rem .4rem;'
+            'background:var(--body-bg);color:var(--body-fg);font-size:.78rem;margin-left:.3rem">'
             '<option value="write" selected>read-write</option>'
             '<option value="read">read-only</option>'
             '</select></span>'
