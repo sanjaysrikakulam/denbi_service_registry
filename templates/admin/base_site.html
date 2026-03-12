@@ -3,6 +3,10 @@
 
 {% block title %}{% if title %}{{ title }} · {% endif %}{{ site_header|default:"Registry Admin" }}{% endblock %}
 
+{% block extrahead %}
+<link rel="icon" type="image/x-icon" href="https://www.denbi.de/templates/nbimaster/favicon.ico">
+{% endblock %}
+
 {% block branding %}
 {% site_logo_url as logo_url %}
 <a href="{% url 'admin:index' %}" id="site-name" style="display:flex;align-items:center;gap:.6rem;text-decoration:none">
