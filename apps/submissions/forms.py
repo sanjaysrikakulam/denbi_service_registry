@@ -17,12 +17,11 @@ from datetime import date
 
 import bleach
 from django import forms
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from apps.registry.models import PrincipalInvestigator, ServiceCategory, ServiceCenter
-from .models import KpiMonitoring, LICENSE_CHOICES, ServiceSubmission
+from .models import KpiMonitoring, ServiceSubmission
 from .widgets import EdamAutocompleteWidget
 
 

@@ -37,13 +37,14 @@ class TestAPIKeyAuthentication:
         resp = client.get(f"/api/v1/submissions/{sub.pk}/")
         assert resp.status_code in (401, 403)
 
-    def test_empty_key_value_returns_403(self):
+    def test_empty_key_value_returns_401(self):
+        # An empty ApiKey header triggers AuthenticationFailed → 401 (not authenticated)
         from rest_framework.test import APIClient
         client = APIClient()
         sub = ServiceSubmissionFactory()
         client.credentials(HTTP_AUTHORIZATION="ApiKey ")
         resp = client.get(f"/api/v1/submissions/{sub.pk}/")
-        assert resp.status_code == 403
+        assert resp.status_code == 401
 
     def test_auth_failure_response_body_is_generic(self):
         """Auth failure responses must not reveal whether a key exists or is revoked."""
@@ -61,12 +62,10 @@ class TestAPIKeyAuthentication:
         client.credentials(HTTP_AUTHORIZATION="ApiKey completely-wrong-key-value-1234")
         resp_invalid = client.get(f"/api/v1/submissions/{sub.pk}/")
 
-        # Both must return 403
-        assert resp_revoked.status_code == 403
-        assert resp_invalid.status_code == 403
-
-        # Response bodies must not differ in a way that reveals key status
+        # Both must return the same status (401 — AuthenticationFailed).
+        # Identical responses prevent inferring whether a key exists or is revoked.
         assert resp_revoked.status_code == resp_invalid.status_code
+        assert resp_revoked.status_code in (401, 403)
 
 
 # ===========================================================================

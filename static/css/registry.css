@@ -23,8 +23,6 @@
 /* ---------------------------------------------------------------------------
    1. Tokens & reset
    --------------------------------------------------------------------------- */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
 :root {
   --g:          #5c9d25;
   --g-dark:     #4a7e1c;
@@ -64,8 +62,8 @@
   --focus-ring:     0 0 0 3px rgba(92,157,37,.28);
   --focus-ring-err: 0 0 0 3px rgba(220,53,69,.20);
 
-  --font: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-  --mono: 'IBM Plex Mono', 'Fira Code', monospace;
+  --font: system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, 'Fira Code', monospace;
 
   --transition: 150ms ease;
 }

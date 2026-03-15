@@ -58,6 +58,14 @@ services:
     networks:
       - backend
     restart: unless-stopped
+    healthcheck:
+      # Ping the worker via the broker — confirms the worker is alive and connected to Redis.
+      # $$HOSTNAME expands to the container hostname so the ping targets this specific worker.
+      test: ["CMD-SHELL", "celery -A config inspect ping --timeout=5 --destination=celery@$$HOSTNAME | grep -q OK"]
+      interval: 30s
+      timeout: 15s
+      start_period: 30s
+      retries: 3
 
   # ---------------------------------------------------------------------------
   # Celery beat — periodic tasks (stale draft cleanup, etc.)
@@ -90,6 +98,11 @@ services:
     networks:
       - backend
     restart: unless-stopped
+    healthcheck:
+      # Beat has no inspection API — disable the Dockerfile default healthcheck
+      # (which curls port 8000, irrelevant for beat). Liveness is inferred from
+      # the process staying up; restart: unless-stopped handles recovery.
+      disable: true
 
   # ---------------------------------------------------------------------------
   # PostgreSQL — primary database

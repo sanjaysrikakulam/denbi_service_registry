@@ -21,7 +21,7 @@ def connect_signals():
     """
     from apps.submissions.models import ServiceSubmission
 
-    @receiver(post_save, sender=ServiceSubmission, dispatch_uid="biotools_sync_on_save")
+    @receiver(post_save, sender=ServiceSubmission, dispatch_uid="biotools_sync_on_save", weak=False)
     def trigger_biotools_sync(sender, instance, created, **kwargs):
         """
         When a ServiceSubmission is saved with a bio.tools URL, kick off

@@ -1,3 +1,7 @@
+---
+icon: material/plus-box
+---
+
 # Extending the Application — Adding New Apps and Features
 
 This guide covers how to add substantial new features (new Django apps,

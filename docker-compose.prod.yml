@@ -1,13 +1,15 @@
 # =============================================================================
 # de.NBI Service Registry — Production Docker Compose Overrides
 # =============================================================================
-# Merge with base:
+# Merge with base compose for production:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
-# KEY DIFFERENCE FROM docker-compose.yml
-# The Docker Nginx binds to 127.0.0.1 only. The host-level Nginx (see
-# nginx/host/registry.denbi.de.conf) terminates TLS and proxies here.
-# No port is exposed directly to 0.0.0.0 from this stack.
+# Production assumptions:
+#   - PostgreSQL is managed externally (set DB_HOST in .env to your server)
+#   - Nginx / TLS termination is handled by the host (not a container)
+#   - Redis runs in Docker (web, worker, beat all share the same stack)
+#
+# Only web, worker, beat, and redis services are managed here.
 # =============================================================================
 
 services:
@@ -22,10 +24,14 @@ services:
         --worker-class sync
         --timeout 60
         --keep-alive 5
+        --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-127.0.0.1}"
         --access-logfile -
         --error-logfile -
     environment:
-    ports: []                 # Web is NOT exposed; only nginx proxies to it
+    ports:
+      # nginx is on a separate server — bind on all interfaces, restrict with
+      # firewall rules to only allow connections from the nginx server's IP.
+      - "0.0.0.0:8000:8000"
     volumes:
       - static_vol:/app/staticfiles
     restart: always
@@ -35,6 +41,12 @@ services:
     environment:
     volumes: []
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping --timeout=5 --destination=celery@$$HOSTNAME | grep -q OK"]
+      interval: 30s
+      timeout: 15s
+      start_period: 30s
+      retries: 3
 
   beat:
     command: >
@@ -44,28 +56,8 @@ services:
     environment:
     volumes: []
     restart: always
-
-  # ---------------------------------------------------------------------------
-  # Docker Nginx — listens on 127.0.0.1 only
-  # The host Nginx (nginx/host/registry.denbi.de.conf) proxies here.
-  # ---------------------------------------------------------------------------
-  nginx:
-    image: nginx:1.27-alpine
-    ports:
-      - "127.0.0.1:8080:80"    # HTTP only — host Nginx handles TLS
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - static_vol:/app/staticfiles:ro
-    depends_on:
-      - web
-    networks:
-      - backend
-    restart: always
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost/health/live/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      disable: true
 
 volumes:
   static_vol:

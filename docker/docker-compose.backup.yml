@@ -30,7 +30,7 @@ services:
           BACKUP_FILE=/backups/denbi_registry_$${TIMESTAMP}.sql.gz
           echo "[$$(date)] Running backup -> $${BACKUP_FILE}"
           PGPASSWORD="$$DB_PASSWORD" pg_dump \
-            -h db -U denbi -d denbi_registry \
+            -h "$${DB_HOST:-localhost}" -U "$${DB_USER:-denbi}" -d "$${DB_NAME:-denbi_registry}" \
             | gzip > "$$BACKUP_FILE"
           if [ $$? -eq 0 ]; then
             echo "[$$(date)] Backup successful: $${BACKUP_FILE}"
@@ -45,10 +45,11 @@ services:
       '
     environment:
       - DB_PASSWORD=${DB_PASSWORD}
+      - DB_HOST=${DB_HOST:-localhost}
+      - DB_USER=${DB_USER:-denbi}
+      - DB_NAME=${DB_NAME:-denbi_registry}
     volumes:
       - backup_vol:/backups
-    depends_on:
-      - db
     networks:
       - backend
     restart: unless-stopped

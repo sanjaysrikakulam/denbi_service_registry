@@ -125,6 +125,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    "csp.middleware.CSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -200,6 +201,9 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", not DEBUG)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Trust the X-Forwarded-Host header set by nginx so Django builds correct
+# absolute URLs in emails and redirects when behind a reverse proxy.
+USE_X_FORWARDED_HOST = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 
@@ -235,6 +239,15 @@ AXES_COOLOFF_TIME = env_int("AXES_COOLOFF_MINUTES", 30) / 60
 AXES_LOCKOUT_CALLABLE = None
 AXES_RESET_ON_SUCCESS = True
 AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+# Tell axes to read the real client IP from proxy headers rather than REMOTE_ADDR.
+# REMOTE_ADDR is the internal nginx server IP when behind a reverse proxy;
+# X-Real-IP is set by nginx to $remote_addr (the actual connecting client IP).
+# X-Forwarded-For is also accepted as a fallback.
+AXES_IPWARE_META_PRECEDENCE_ORDER = [
+    "HTTP_X_REAL_IP",
+    "HTTP_X_FORWARDED_FOR",
+    "REMOTE_ADDR",
+]
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -281,11 +294,15 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULE = {
     "cleanup-stale-drafts": {
         "task": "apps.submissions.tasks.cleanup_stale_drafts",
-        "schedule": 21600,
+        "schedule": 86400,          # every 24 hours
     },
     "sync-biotools-daily": {
         "task": "biotools.sync_all",
-        "schedule": 86400,
+        "schedule": 86400,          # daily
+    },
+    "sync-edam-monthly": {
+        "task": "edam.sync",
+        "schedule": 2592000,        # every 30 days (~monthly)
     },
 }
 
@@ -341,6 +358,11 @@ SPECTACULAR_SETTINGS = {
                 "url":   _sc_site.get("url", "")},
     "LICENSE": {"name": _sc_api.get("license_name", "MIT")},
     "SWAGGER_UI_SETTINGS": {"persistAuthorization": True, "displayRequestDuration": True},
+    # Vendor swagger-ui and redoc locally — no CDN requests (GDPR).
+    # swagger-ui-dist 5.18.2, redoc 2.2.0 — vendored in static/swagger-ui/ and static/redoc/
+    "SWAGGER_UI_DIST": "/static/swagger-ui",
+    "SWAGGER_UI_FAVICON_HREF": "/static/swagger-ui/favicon-32x32.png",
+    "REDOC_DIST": "/static/redoc",
     # Expose both auth schemes in the Swagger UI Authorize dialog
     "SECURITY_DEFINITIONS": {
         "AdminToken": {
@@ -383,15 +405,33 @@ CORS_PREFLIGHT_MAX_AGE = 86400
 # ---------------------------------------------------------------------------
 # Content Security Policy
 # ---------------------------------------------------------------------------
+# img-src: allow 'self' + data URIs always.
+# If logo_url or favicon_url in site.toml points to an external origin,
+# extract just that origin (scheme + host) and add it — so the CSP stays
+# tight even when the logo is hosted elsewhere.
+def _csp_img_origins() -> tuple:
+    from urllib.parse import urlparse
+    origins = {"'self'", "data:"}
+    for key in ("logo_url", "favicon_url"):
+        url = _sc_site.get(key, "")
+        if url and url.startswith("https://"):
+            parsed = urlparse(url)
+            origins.add(f"{parsed.scheme}://{parsed.netloc}")
+    return tuple(sorted(origins))
+
+
 CONTENT_SECURITY_POLICY = {
     "DIRECTIVES": {
         "default-src":      ("'self'",),
-        "script-src":       ("'self'", "https://js.hcaptcha.com", "https://challenges.cloudflare.com"),
-        "style-src":        ("'self'", "https://cdn.jsdelivr.net"),
-        "img-src":          ("'self'", "data:"),
+        # 'unsafe-inline' is required because templates use inline <script> blocks
+        # and inline event handlers (e.g. onerror). To remove it, extract all
+        # inline JS to static files and use nonces on remaining script elements.
+        "script-src":       ("'self'", "'unsafe-inline'"),
+        "style-src":        ("'self'", "'unsafe-inline'"),  # Bootstrap uses inline styles via JS
+        "img-src":          _csp_img_origins(),
         "font-src":         ("'self'",),
-        "connect-src":      ("'self'", "https://hcaptcha.com"),
-        "frame-src":        ("https://hcaptcha.com", "https://challenges.cloudflare.com"),
+        "connect-src":      ("'self'",),
+        "frame-src":        ("'none'",),
         "frame-ancestors":  ("'none'",),
         "form-action":      ("'self'",),
         "base-uri":         ("'self'",),
@@ -399,16 +439,6 @@ CONTENT_SECURITY_POLICY = {
         "upgrade-insecure-requests": not DEBUG,
     },
 }
-
-# ---------------------------------------------------------------------------
-# CAPTCHA
-# ---------------------------------------------------------------------------
-CAPTCHA_ENABLED = env_bool("CAPTCHA_ENABLED", not DEBUG)
-CAPTCHA_PROVIDER = env("CAPTCHA_PROVIDER", "hcaptcha")
-HCAPTCHA_SECRET_KEY = env("HCAPTCHA_SECRET_KEY", "")
-HCAPTCHA_SITEKEY = env("HCAPTCHA_SITEKEY", "")
-TURNSTILE_SECRET_KEY = env("TURNSTILE_SECRET_KEY", "")
-TURNSTILE_SITEKEY = env("TURNSTILE_SITEKEY", "")
 
 # ---------------------------------------------------------------------------
 # Rate limiting / API keys / Cache

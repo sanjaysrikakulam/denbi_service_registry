@@ -1,10 +1,14 @@
 # =============================================================================
-# de.NBI Service Registry — CI/CD Docker Compose
+# de.NBI Service Registry — CI Docker Compose
 # =============================================================================
-# Usage:
+# Runs tests, linting, and security audit inside Docker.
+# Tests use SQLite in-memory (config/settings_test.py) — no external services.
+#
+# Usage (from project root):
 #   docker compose -f docker/docker-compose.ci.yml run --rm test
 #   docker compose -f docker/docker-compose.ci.yml run --rm lint
 #   docker compose -f docker/docker-compose.ci.yml run --rm audit
+#   docker compose -f docker/docker-compose.ci.yml run --rm typecheck
 # =============================================================================
 
 services:
@@ -14,18 +18,14 @@ services:
       context: ..
       dockerfile: Dockerfile
       target: runtime
-    command: >
-      sh -c "
-        python manage.py migrate --run-syncdb &&
-        pytest tests/ -v --tb=short --cov=apps --cov-report=term-missing --cov-report=xml
-      "
+    command: pytest tests/ -v --tb=short --cov=apps --cov-report=term-missing --cov-report=xml
     environment:
-      - SECRET_KEY=ci-only-secret-key-not-for-production
-      - DB_PASSWORD=ci
-      - REDIS_PASSWORD=ci
-      - DEBUG=true
-      - CAPTCHA_ENABLED=false
-      - CELERY_TASK_ALWAYS_EAGER=True
+      - DJANGO_SETTINGS_MODULE=config.settings_test
+      # settings_test.py uses SQLite/locmem — these are still required by
+      # the base settings import but are not actually used for connections.
+      - SECRET_KEY=ci-only-not-a-real-key
+      - DB_PASSWORD=unused-in-test
+      - REDIS_PASSWORD=unused-in-test
     volumes:
       - ../:/app
     networks:
@@ -36,9 +36,9 @@ services:
       context: ..
       dockerfile: Dockerfile
       target: runtime
-    command: ruff check apps/ config/ tests/
+    command: sh -c "ruff check apps/ config/ tests/ && ruff format --check apps/ config/ tests/"
     environment:
-      - SECRET_KEY=ci-only-secret-key
+      - SECRET_KEY=ci
       - DB_PASSWORD=ci
       - REDIS_PASSWORD=ci
     volumes:
@@ -62,7 +62,7 @@ services:
       target: runtime
     command: mypy apps/ config/
     environment:
-      - SECRET_KEY=ci-only-secret-key
+      - SECRET_KEY=ci
       - DB_PASSWORD=ci
       - REDIS_PASSWORD=ci
     volumes:

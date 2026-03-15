@@ -1,12 +1,15 @@
+---
+icon: material/tune
+---
+
 # Configuration Reference
 
-This document describes every configuration option for the de.NBI Service Registry.
 Configuration is split into two files with a clear separation of concerns:
 
-| File | What goes here | Restart needed? |
-|---|---|---|
-| `config/site.toml` | Branding, contact info, URLs, feature flags | Yes (`docker compose restart web worker beat`) |
-| `.env` | Secrets, passwords, connection strings | Yes (full restart) |
+| File               | What goes here                                 | Restart needed?                                |
+| ------------------ | ---------------------------------------------- | ---------------------------------------------- |
+| `config/site.toml` | Branding, contact info, URLs, feature flags    | Yes (`docker compose restart web worker beat`) |
+| `.env`             | Secrets, passwords, connection strings, tuning | Yes (full restart)                             |
 
 ---
 
@@ -20,21 +23,23 @@ a different organisation.
 
 ```toml
 [site]
-name        = "de.NBI Service Registry"
-tagline     = "de.NBI & ELIXIR-DE Service Registration System"
-url         = "https://registry.denbi.de"
-logo_url    = "https://www.denbi.de/templates/nbimaster/img/denbi-logo-color.svg"
+name         = "de.NBI Service Registry"
+tagline      = "de.NBI & ELIXIR-DE Service Registration System"
+url          = "https://service-registry.bi.denbi.de"
+logo_url     = ""
+favicon_url  = ""
 form_version = "1.1"
 form_date    = "2026-02-14"
 ```
 
-| Key | Description |
-|---|---|
-| `name` | Site name shown in the navbar, page titles, and email subjects |
-| `tagline` | Browser tab subtitle and meta description |
-| `url` | Canonical public URL — used in outbound emails and the bio.tools API User-Agent |
-| `logo_url` | Logo image URL. Empty string shows the CSS text fallback. A local static file can be referenced as `/static/img/logo.svg` after running `make collectstatic` |
-| `form_version` / `form_date` | Shown in the registration form header |
+| Key                          | Description                                                                                                                                                                                        |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                       | Site name shown in the navbar, page titles, and email subjects                                                                                                                                     |
+| `tagline`                    | Browser tab subtitle and meta description                                                                                                                                                          |
+| `url`                        | Canonical public URL — used in outbound emails and the bio.tools API User-Agent                                                                                                                    |
+| `logo_url`                   | Logo image URL. Three options: an absolute URL (`https://…`), a local static path (`/static/img/logo.svg`), or empty string (auto-detects `static/img/logo.*`, then falls back to a CSS text logo) |
+| `favicon_url`                | Favicon URL. Same three options as `logo_url`. Empty string auto-detects `static/img/favicon.ico` / `.png` / `.svg`. If nothing is found, no `<link rel="icon">` is rendered                       |
+| `form_version` / `form_date` | Shown in the registration form header                                                                                                                                                              |
 
 ### `[contact]` — Contact details
 
@@ -45,13 +50,7 @@ office       = "Forschungszentrum Jülich GmbH - IBG-5, c/o Bielefeld University
 organisation = "German Network for Bioinformatics Infrastructure"
 ```
 
-`contact.email` appears in:
-- The registration form sidebar
-- The update / lookup form
-- The success page after submission
-- All outbound email footers
-- The OpenAPI contact metadata
-- The site footer
+`contact.email` appears in the form sidebar, update page, success page, email footers, OpenAPI metadata, and the site footer.
 
 ### `[email]` — Sender identity
 
@@ -61,8 +60,7 @@ from_address   = "no-reply@denbi.de"
 subject_prefix = "[de.NBI Registry]"
 ```
 
-> **Note:** `from_address` is overridden by the `EMAIL_FROM` environment variable if that is set.
-> SMTP credentials (host, port, password) stay in `.env`.
+`from_address` is overridden by the `EMAIL_FROM` environment variable if set. SMTP credentials stay in `.env`.
 
 ### `[links]` — External URLs
 
@@ -71,12 +69,11 @@ subject_prefix = "[de.NBI Registry]"
 website         = "https://www.denbi.de"
 privacy_policy  = "https://www.denbi.de/privacy-policy"
 imprint         = "https://www.denbi.de/imprint"
-data_protection = "https://www.denbi.de/?view=article&id=1968:services-dpi&catid=21"
+data_protection = "https://www.denbi.de/privacy-policy"
 kpi_cheatsheet  = "https://www.denbi.de/images/Service/20210624_KPI_Cheat_Sheet_doi.pdf"
 ```
 
-All links are rendered dynamically — changing a URL here updates it everywhere
-in the UI without touching template files.
+All links are rendered dynamically — changing a URL here updates it everywhere in the UI without touching template files.
 
 ### `[api]` — OpenAPI metadata
 
@@ -93,44 +90,103 @@ license_name = "MIT"
 [features]
 biotools_prefill  = true   # Show bio.tools prefill banner on the form
 edam_annotations  = true   # Show EDAM ontology fields on the form
-captcha_enabled   = false  # Require hCaptcha/Turnstile (needs sitekey in .env)
 ```
+
+### `[edam]` — EDAM ontology sync
+
+```toml
+[edam]
+owl_url = "https://edamontology.org/EDAM_stable.owl"
+```
+
+Overridden by `EDAM_OWL_URL` in `.env`. Set to a local file path for air-gapped servers.
+
+### `[admin]` — Admin interface
+
+```toml
+[admin]
+url_prefix = "admin-denbi"
+```
+
+Overridden by `ADMIN_URL_PREFIX` in `.env`. Changes the URL of the Django admin interface (`/<prefix>/`). Obfuscates the admin URL to reduce automated scanning noise — not a security boundary on its own.
 
 ---
 
 ## `.env` — Secrets and connection strings
 
-Copy `.env.example` to `.env` and fill in the required values.
+Copy `.env.example` to `.env` and fill in the required values. Every variable is documented below with its default.
 
-### Required (startup fails without these)
+### Required — startup fails without these
 
 ```bash
-SECRET_KEY=<generate with: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())">
+SECRET_KEY=<generate: python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())">
 DB_PASSWORD=<strong-password>
 REDIS_PASSWORD=<strong-password>
 ```
 
-### Database
+### Django core
+
+```bash
+DEBUG=false
+ALLOWED_HOSTS=service-registry.bi.denbi.de,www.service-registry.bi.denbi.de
+TIME_ZONE=Europe/Berlin
+```
+
+### Database (PostgreSQL)
 
 ```bash
 DB_NAME=denbi_registry
 DB_USER=denbi
-DB_HOST=db          # Docker Compose service name
+DB_HOST=db          # Docker Compose service name in dev; real hostname in prod
 DB_PORT=5432
 ```
 
 ### Redis
 
 ```bash
-REDIS_HOST=redis
+REDIS_HOST=redis    # Docker Compose service name in dev; real hostname in prod
 REDIS_PORT=6379
 ```
 
-### Django
+### Reverse proxy / real IP
 
 ```bash
-DEBUG=false
-ALLOWED_HOSTS=registry.denbi.de,www.registry.denbi.de
+# IP (or comma-separated list / CIDR range) of the nginx server.
+# Gunicorn only extracts the real client IP from X-Forwarded-For when the
+# connection comes from a trusted address.  Without this, Django records the
+# proxy's IP instead of the real client IP in logs and admin access-attempt records.
+#
+# Same-machine setup:   FORWARDED_ALLOW_IPS=127.0.0.1
+# Separate nginx server: FORWARDED_ALLOW_IPS=192.168.232.10
+# Internal subnet:       FORWARDED_ALLOW_IPS=192.168.232.0/24
+FORWARDED_ALLOW_IPS=127.0.0.1
+```
+
+### Security
+
+```bash
+HSTS_SECONDS=31536000           # HSTS max-age in seconds (default: 1 year)
+SECURE_SSL_REDIRECT=true        # Force HTTP → HTTPS at Django layer
+SESSION_COOKIE_SECURE=true      # Mark session cookie as HTTPS-only
+SESSION_COOKIE_AGE=3600         # Session lifetime in seconds (default: 1 hour)
+CSRF_COOKIE_SECURE=true         # Mark CSRF cookie as HTTPS-only
+```
+
+### Admin brute-force protection
+
+```bash
+AXES_FAILURE_LIMIT=5            # Failed login attempts before lockout
+AXES_COOLOFF_MINUTES=30         # Lockout duration in minutes
+```
+
+### Rate limiting
+
+Format: `<count>/<period>` where period is `s` / `m` / `h` / `d`.
+
+```bash
+RATE_LIMIT_SUBMIT=10/h          # Registration form submissions
+RATE_LIMIT_UPDATE=20/h          # Submission update form
+RATE_LIMIT_API=60/m             # REST API create endpoint
 ```
 
 ### Email (SMTP credentials)
@@ -142,35 +198,57 @@ EMAIL_PORT=587
 EMAIL_USE_TLS=true
 EMAIL_HOST_USER=
 EMAIL_HOST_PASSWORD=
-# Overrides [email] from_address in site.toml if set:
-EMAIL_FROM=no-reply@denbi.de
+EMAIL_FROM=no-reply@denbi.de    # Overrides [email] from_address in site.toml
+
+# Optional CC address on every submission notification:
+# SUBMISSION_NOTIFY_CC=admin@denbi.de
+
+# Override all notification recipients for testing (sends all emails here):
+# SUBMISSION_NOTIFY_OVERRIDE=test-inbox@denbi.de
 ```
 
-### CAPTCHA (optional)
+### REST API
 
 ```bash
-HCAPTCHA_SITEKEY=
-HCAPTCHA_SECRET_KEY=
-# or Cloudflare Turnstile:
-TURNSTILE_SITEKEY=
-TURNSTILE_SECRET_KEY=
+API_PAGE_SIZE=20                # Default page size for list endpoints
+API_MAX_PAGE_SIZE=100           # Maximum page size clients may request
+
+# Comma-separated allowed origins for cross-origin API requests.
+# Leave empty to disallow all cross-origin requests (safe default).
+CORS_ALLOWED_ORIGINS=
+CORS_ALLOW_CREDENTIALS=false
+```
+
+### API key security
+
+```bash
+API_KEY_ENTROPY_BYTES=48        # Entropy bytes → 64-char URL-safe token
+API_KEY_HASH_ALGORITHM=sha256   # Hash algorithm for stored key hashes
 ```
 
 ### EDAM ontology
 
 ```bash
-# Default: latest stable OWL release.
-# Pin a specific version:
-EDAM_OWL_URL=https://edamontology.org/EDAM_1.25.owl
-# Or a local file for air-gapped servers:
-EDAM_OWL_URL=/app/EDAM.owl
+# Overrides [edam] owl_url in site.toml.
+# Pin a specific release: https://edamontology.org/EDAM_1.25.owl
+# Air-gapped servers:     /app/EDAM.owl
+EDAM_OWL_URL=https://edamontology.org/EDAM_stable.owl
 ```
 
-### Optional
+### Branding overrides
+
+These can also be set in `site.toml`. Env vars take precedence.
 
 ```bash
-SENTRY_DSN=              # Error tracking
-ADMIN_URL_PREFIX=admin   # Obscure the Django admin URL
+# ADMIN_URL_PREFIX=admin-denbi
+# LOGO_URL=/static/img/logo.svg
+```
+
+### Error tracking (Sentry)
+
+```bash
+SENTRY_DSN=                     # Leave empty to disable
+SENTRY_TRACES_SAMPLE_RATE=0.1   # Fraction of transactions sent (0–1)
 ```
 
 ---
@@ -178,7 +256,7 @@ ADMIN_URL_PREFIX=admin   # Obscure the Django admin URL
 ## Using site.toml values in custom templates
 
 All values from `site.toml` are injected into every Django template via the
-`site_context` context processor. They are available as:
+`site_context` context processor:
 
 ```django
 {# Top-level shortcuts #}
@@ -191,6 +269,7 @@ All values from `site.toml` are injected into every Django template via the
 {{ IMPRINT_URL }}
 {{ WEBSITE_URL }}
 {{ LOGO_URL }}
+{{ FAVICON_URL }}
 
 {# Full SITE dict — mirrors site.toml sections #}
 {{ SITE.form_version }}
@@ -209,7 +288,8 @@ needs to be edited:
 
 1. Update `[site]`, `[contact]`, and `[links]` sections
 2. Place your logo at `static/img/logo.svg` and set `logo_url = "/static/img/logo.svg"`
-3. Run `docker compose exec web python manage.py collectstatic --noinput`
-4. Restart: `docker compose restart web worker beat`
+3. Place your favicon at `static/img/favicon.ico` (auto-detected, no config needed)
+4. Run `docker compose exec web python manage.py collectstatic --noinput`
+5. Restart: `docker compose restart web worker beat`
 
 No Python, no template edits, no rebuild required.

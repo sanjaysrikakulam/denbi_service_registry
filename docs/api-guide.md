@@ -1,11 +1,18 @@
+---
+icon: material/api
+---
+
 # API Guide
 
 The de.NBI Service Registry REST API allows programmatic access to service registrations.
 
 Interactive documentation is available at:
+
 - **Swagger UI**: `/api/docs/`
 - **ReDoc**: `/api/redoc/`
-- **OpenAPI schema**: `/api/schema/`
+- **OpenAPI schema** (JSON): `/api/schema/`
+
+Both Swagger UI (swagger-ui-dist 5.18.2) and ReDoc (2.2.0) assets are vendored locally in `static/` — no CDN or external requests are made when loading the docs pages.
 
 ---
 
@@ -19,14 +26,16 @@ For staff users and trusted integrations. Grants access to the full submission l
 and all reference data endpoints.
 
 **Creating a token:**
+
 1. Log in to `/admin-denbi/`
 2. Go to **Auth Token → Tokens → Add Token**
 3. Select the staff user and save
 4. Copy the key — it is shown in full on the token detail page
 
 **Using it:**
+
 ```bash
-curl https://registry.denbi.de/api/v1/submissions/ \
+curl https://service-registry.bi.denbi.de/api/v1/submissions/ \
   -H "Authorization: Token d876555a570df89909058eeeb6d88f4b814a81a1"
 ```
 
@@ -37,14 +46,15 @@ Scoped to a single submission. The plaintext key is shown **once** — store it 
 
 Two scopes are available (set by admins via the API Key admin):
 
-| Scope | Allowed methods |
-|-------|----------------|
-| `read` | GET only |
-| `write` | GET + PATCH |
+| Scope   | Allowed methods |
+| ------- | --------------- |
+| `read`  | GET only        |
+| `write` | GET + PATCH     |
 
 **Using it:**
+
 ```bash
-curl https://registry.denbi.de/api/v1/submissions/<id>/ \
+curl https://service-registry.bi.denbi.de/api/v1/submissions/<id>/ \
   -H "Authorization: ApiKey <your-key>"
 ```
 
@@ -57,6 +67,7 @@ curl https://registry.denbi.de/api/v1/submissions/<id>/ \
 No authentication required. Submits a new service registration.
 
 **Response (201):**
+
 ```json
 {
   "id": "26a59fcb-...",
@@ -76,15 +87,16 @@ Requires admin Token. Returns paginated full detail for all submissions.
 
 **Query parameters:**
 
-| Parameter | Example | Description |
-|-----------|---------|-------------|
-| `status` | `?status=approved` | Filter by status |
-| `service_center` | `?service_center=BioinfoProt` | Filter by centre short name |
-| `year_established` | `?year_established=2021` | Filter by year |
-| `register_as_elixir` | `?register_as_elixir=true` | Filter by ELIXIR flag |
-| `ordering` | `?ordering=-submitted_at` | Sort (prefix `-` for descending) |
+| Parameter            | Example                       | Description                      |
+| -------------------- | ----------------------------- | -------------------------------- |
+| `status`             | `?status=approved`            | Filter by status                 |
+| `service_center`     | `?service_center=BioinfoProt` | Filter by centre short name      |
+| `year_established`   | `?year_established=2021`      | Filter by year                   |
+| `register_as_elixir` | `?register_as_elixir=true`    | Filter by ELIXIR flag            |
+| `ordering`           | `?ordering=-submitted_at`     | Sort (prefix `-` for descending) |
 
 **Response (200):**
+
 ```json
 {
   "count": 42,
@@ -121,7 +133,7 @@ Requires `ApiKey` with `write` scope. Partial update — include only changed fi
 Updating an approved submission resets its status to `submitted` for re-review.
 
 ```bash
-curl -X PATCH https://registry.denbi.de/api/v1/submissions/<id>/ \
+curl -X PATCH https://service-registry.bi.denbi.de/api/v1/submissions/<id>/ \
   -H "Authorization: ApiKey <your-key>" \
   -H "Content-Type: application/json" \
   -d '{"kpi_start_year": "2026"}'
@@ -186,24 +198,24 @@ The following fields are **never** included in any API response regardless of au
 
 ```bash
 # Register a new service (public)
-curl -X POST https://registry.denbi.de/api/v1/submissions/ \
+curl -X POST https://service-registry.bi.denbi.de/api/v1/submissions/ \
   -H "Content-Type: application/json" \
   -d @submission.json
 
 # List all submissions (admin token)
-curl https://registry.denbi.de/api/v1/submissions/ \
+curl https://service-registry.bi.denbi.de/api/v1/submissions/ \
   -H "Authorization: Token <admin-token>"
 
 # Retrieve your submission (ApiKey)
-curl https://registry.denbi.de/api/v1/submissions/<id>/ \
+curl https://service-registry.bi.denbi.de/api/v1/submissions/<id>/ \
   -H "Authorization: ApiKey <your-key>"
 
 # Update a field (ApiKey, write scope)
-curl -X PATCH https://registry.denbi.de/api/v1/submissions/<id>/ \
+curl -X PATCH https://service-registry.bi.denbi.de/api/v1/submissions/<id>/ \
   -H "Authorization: ApiKey <your-key>" \
   -H "Content-Type: application/json" \
   -d '{"website_url": "https://new-url.example.com"}'
 
 # Browse EDAM topics (public)
-curl "https://registry.denbi.de/api/v1/edam/?branch=topic&q=proteomics"
+curl "https://service-registry.bi.denbi.de/api/v1/edam/?branch=topic&q=proteomics"
 ```

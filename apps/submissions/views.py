@@ -15,8 +15,7 @@ import logging
 from django.conf import settings
 from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
+from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
 from django.views import View
 from django_ratelimit.decorators import ratelimit
@@ -33,10 +32,19 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def _get_client_ip(request: HttpRequest) -> str:
-    """Extract client IP from request, respecting X-Forwarded-For from Nginx."""
-    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    """
+    Extract the real client IP when Django sits behind a reverse proxy.
+
+    Priority order (matches AXES_IPWARE_META_PRECEDENCE_ORDER in settings):
+      1. X-Real-IP     — set by nginx to $remote_addr; single value, not spoofable by clients
+      2. X-Forwarded-For — leftmost entry is the original client; may have multiple hops
+      3. REMOTE_ADDR   — the connecting IP (nginx server's IP in a two-server setup)
+    """
+    real_ip = request.META.get("HTTP_X_REAL_IP", "").strip()
+    if real_ip:
+        return real_ip
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "").strip()
     if forwarded_for:
-        # Take the first (client) IP from the comma-separated list
         return forwarded_for.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR", "")
 

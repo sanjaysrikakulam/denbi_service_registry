@@ -1,3 +1,7 @@
+---
+icon: material/rocket-launch
+---
+
 # Deployment Guide
 
 > **Configuration:** see [Configuration Reference](configuration.md) for all settings including branding, contact email, and feature flags. — de.NBI Service Registry
@@ -5,10 +9,9 @@
 ## Prerequisites
 
 - Docker Engine 24+ and Docker Compose v2
-- A hostname with DNS pointing to your server (e.g. `registry.denbi.de`)
+- A hostname with DNS pointing to your server (e.g. `service-registry.bi.denbi.de`)
 - TLS certificate (Let's Encrypt recommended)
 - Access to an SMTP server for email notifications
-- (Optional) A CAPTCHA provider account (hCaptcha or Cloudflare Turnstile)
 
 ---
 
@@ -24,11 +27,11 @@ cp .env.example .env
 
 **Required — startup fails without these:**
 
-| Variable | Description |
-|----------|-------------|
-| `SECRET_KEY` | Django secret key — generate with `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
-| `DB_PASSWORD` | PostgreSQL password — must match `POSTGRES_PASSWORD` used to initialise the DB volume |
-| `REDIS_PASSWORD` | Redis password |
+| Variable         | Description                                                                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SECRET_KEY`     | Django secret key — generate with `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
+| `DB_PASSWORD`    | PostgreSQL password — must match `POSTGRES_PASSWORD` used to initialise the DB volume                                                          |
+| `REDIS_PASSWORD` | Redis password                                                                                                                                 |
 
 Everything else has sensible defaults for development. See `.env.example` for the full reference.
 
@@ -81,7 +84,7 @@ DB_PASSWORD=<strong-random-password>
 REDIS_PASSWORD=<strong-random-password>
 
 DEBUG=false
-ALLOWED_HOSTS=registry.denbi.de
+ALLOWED_HOSTS=service-registry.bi.denbi.de
 
 EMAIL_HOST=smtp.your-provider.org
 EMAIL_PORT=587
@@ -89,10 +92,6 @@ EMAIL_USE_TLS=true
 EMAIL_HOST_USER=your-smtp-user
 EMAIL_HOST_PASSWORD=your-smtp-password
 EMAIL_FROM=no-reply@denbi.de
-
-CAPTCHA_ENABLED=true
-HCAPTCHA_SECRET_KEY=your-hcaptcha-secret
-HCAPTCHA_SITEKEY=your-hcaptcha-sitekey
 
 ADMIN_URL_PREFIX=your-secret-admin-path
 ```
@@ -102,14 +101,16 @@ ADMIN_URL_PREFIX=your-secret-admin-path
 Place certificates at `nginx/ssl/fullchain.pem` and `nginx/ssl/privkey.pem`.
 
 **Using Let's Encrypt (certbot):**
+
 ```bash
 apt install certbot
-certbot certonly --standalone -d registry.denbi.de
-cp /etc/letsencrypt/live/registry.denbi.de/fullchain.pem nginx/ssl/
-cp /etc/letsencrypt/live/registry.denbi.de/privkey.pem nginx/ssl/
+certbot certonly --standalone -d service-registry.bi.denbi.de
+cp /etc/letsencrypt/live/service-registry.bi.denbi.de/fullchain.pem nginx/ssl/
+cp /etc/letsencrypt/live/service-registry.bi.denbi.de/privkey.pem nginx/ssl/
 ```
 
 Set up automatic renewal:
+
 ```bash
 certbot renew --pre-hook "docker compose stop nginx" --post-hook "docker compose start nginx"
 ```
@@ -117,8 +118,9 @@ certbot renew --pre-hook "docker compose stop nginx" --post-hook "docker compose
 ### Step 3 — Update Nginx config
 
 Edit `nginx/nginx.conf` — update `server_name` to your hostname:
+
 ```nginx
-server_name registry.denbi.de;
+server_name service-registry.bi.denbi.de;
 ```
 
 ### Step 4 — Start production services
@@ -165,45 +167,86 @@ docker compose exec web python manage.py loaddata apps/registry/fixtures/initial
 
 ## EDAM Ontology Seeding
 
-**This step is required before the registration form can offer EDAM term selection.**
-Without it, the EDAM Topic and EDAM Operations dropdowns will be empty.
+The EDAM ontology (~3,400 terms) powers the Topic and Operation dropdowns on the
+registration form. The application handles seeding in three ways — no manual step
+is required on a standard first deployment.
 
-Run once after the first deployment and again when a new EDAM release is published:
+### Automatic seeding on first migrate
 
-```bash
-# Downloads terms from EDAM_OWL_URL (default: EDAM_stable.owl, ~30 seconds)
-docker compose exec web python manage.py sync_edam
+When `manage.py migrate` runs against a **fresh database** (empty `EdamTerm` table),
+it automatically downloads and imports EDAM from `EDAM_OWL_URL`. This happens as
+a `post_migrate` signal — you will see progress output at the end of `migrate`:
+
+```
+[edam] EdamTerm table is empty — running initial EDAM sync.
+[edam] This downloads ~3 MB from edamontology.org and may take ~30 seconds.
+[edam] Loading EDAM from: https://edamontology.org/EDAM_stable.owl
+...
+[edam] Auto-seed complete — 3471 terms loaded (EDAM 1.25).
 ```
 
-Verify it succeeded:
+On subsequent `migrate` runs (e.g. applying a new migration), the table is not
+empty so the signal is a no-op.
+
+### Ongoing automatic updates
+
+Celery beat runs a full EDAM sync **every 30 days** automatically. EDAM releases
+are infrequent (~1–2 per year) so monthly is more than sufficient.
+
+### Manual sync
+
+Force a sync at any time via:
+
+- **Admin UI**: Go to **EDAM Ontology → EDAM Terms** and click **↻ Sync EDAM from upstream**.
+  The sync runs as a background Celery task; refresh the page after ~30 seconds.
+
+- **CLI**:
+  ```bash
+  docker compose exec web python manage.py sync_edam
+  ```
+
+Verify the current state:
+
 ```bash
 docker compose exec web python manage.py shell -c \
-  "from apps.edam.models import EdamTerm; print(f'Loaded {EdamTerm.objects.count()} EDAM terms')"
-# Expected: Loaded 4165 EDAM terms (number varies by release)
+  "from apps.edam.models import EdamTerm; t = EdamTerm.objects.first(); print(EdamTerm.objects.count(), 'terms, version', t.edam_version)"
 ```
 
-If your server cannot reach edamontology.org (firewall), download the JSON on another machine:
+### Air-gapped / firewall-restricted servers
+
+If the server cannot reach edamontology.org, download the OWL file on another machine
+and copy it across:
 
 ```bash
 # On a machine with internet access:
 curl -o EDAM.owl https://edamontology.org/EDAM_stable.owl
+# Copy EDAM.owl to the server, then:
+```
 
-# Copy to server and load from local path:
-# Either set in .env:
-#   EDAM_OWL_URL=/app/EDAM.owl
-# Or pass directly:
+Either set the path permanently in `.env`:
+
+```bash
+EDAM_OWL_URL=/app/EDAM.owl
+```
+
+Or pass it once to the management command:
+
+```bash
 docker compose exec web python manage.py sync_edam --url /app/EDAM.owl
 ```
+
+The auto-seed on first migrate also respects `EDAM_OWL_URL`, so an air-gapped
+deployment works without any code changes.
 
 ---
 
 ## Network Requirements
 
-| Destination | Port | When needed | Purpose |
-|-------------|------|-------------|---------|
-| `bio.tools` | 443 | On form submission + daily | bio.tools API sync |
-| `edamontology.org` | 443 | Manual `sync_edam` runs only | EDAM ontology download |
-| Your SMTP server | 587 | On every submission/status change | Email notifications |
+| Destination        | Port | When needed                       | Purpose                |
+| ------------------ | ---- | --------------------------------- | ---------------------- |
+| `bio.tools`        | 443  | On form submission + daily        | bio.tools API sync     |
+| `edamontology.org` | 443  | Manual `sync_edam` runs only      | EDAM ontology download |
+| Your SMTP server   | 587  | On every submission/status change | Email notifications    |
 
 ---
 
@@ -238,7 +281,6 @@ LOGO_URL=https://www.denbi.de/images/logos/denbi-logo.png
 Recommended logo height is 38px. The image renders in the top-left of the navbar
 alongside the site name text.
 
-
 ---
 
 ## Backup
@@ -266,12 +308,11 @@ Redis holds only transient Celery queue data and does not need persistent backup
 - [ ] Strong passwords for `DB_PASSWORD` and `REDIS_PASSWORD`
 - [ ] TLS certificate installed and auto-renewal configured
 - [ ] HSTS preload submitted to [hstspreload.org](https://hstspreload.org)
-- [ ] `CAPTCHA_ENABLED=true` and CAPTCHA keys configured
 - [ ] `ADMIN_URL_PREFIX` changed from default `admin-denbi`
 - [ ] `ALLOWED_HOSTS` set to production hostname only
 - [ ] All containers running as non-root (`docker compose ps` → verify USER column)
 - [ ] `pip-audit` passes: `make audit`
-- [ ] Health checks passing: `curl https://registry.denbi.de/health/ready/`
+- [ ] Health checks passing: `curl https://service-registry.bi.denbi.de/health/ready/`
 - [ ] Test email notification by submitting a test form
 
 ---
@@ -279,6 +320,7 @@ Redis holds only transient Celery queue data and does not need persistent backup
 ## Troubleshooting
 
 **Web service not starting:**
+
 ```bash
 docker compose logs web
 # Common causes: missing SECRET_KEY, DB_PASSWORD, or REDIS_PASSWORD in .env
@@ -286,6 +328,7 @@ docker compose logs web
 ```
 
 **Database authentication failure:**
+
 ```bash
 # Verify what password Django is using
 docker compose exec web python -c "
@@ -300,6 +343,7 @@ print(d)
 ```
 
 **Emails not sending:**
+
 ```bash
 docker compose logs worker
 docker compose exec worker python -c \
@@ -307,20 +351,15 @@ docker compose exec worker python -c \
 ```
 
 **Rate limit 429 errors in testing:**
+
 ```bash
 # Increase limits in .env:
 RATE_LIMIT_SUBMIT=1000/h
 RATE_LIMIT_UPDATE=1000/h
 ```
 
-**CAPTCHA failures in development:**
-```bash
-# CAPTCHA is disabled by default when DEBUG=true.
-# To force-disable in production-like testing:
-CAPTCHA_ENABLED=false
-```
-
 **EDAM dropdowns empty:**
+
 ```bash
 docker compose exec web python manage.py sync_edam
 ```

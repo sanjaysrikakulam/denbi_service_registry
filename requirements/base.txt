@@ -6,7 +6,6 @@
 # Core framework
 Django==6.0.0
 psycopg[binary]==3.3.3       # PostgreSQL adapter (psycopg3)
-gunicorn==25.1.0              # WSGI server
 
 # Configuration
 

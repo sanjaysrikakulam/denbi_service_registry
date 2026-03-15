@@ -1,3 +1,7 @@
+---
+icon: material/account
+---
+
 # User Guide — de.NBI Service Registration
 
 ## What is this?
@@ -116,12 +120,50 @@ If the bio.tools lookup fails (tool not found, or bio.tools is temporarily unava
 a warning banner is shown and you can fill in the fields manually.
 
 ### URL fields
+
 All URLs must use **https://**. Plain http:// URLs are not accepted.
-GitHub, bio.tools, and FAIRsharing URLs are validated to match those domains.
+
+Domain-specific URL fields enforce a prefix match in addition to the HTTPS requirement:
+
+| Field | Required prefix |
+|---|---|
+| Website URL | `https://` (any domain) |
+| Terms of use URL | `https://` (any domain) |
+| GitHub repository | `https://github.com/` |
+| bio.tools entry | `https://bio.tools/` |
+| FAIRsharing entry | `https://fairsharing.org/` |
+| Other registry | `https://` (any domain) |
+
+**FAIRsharing** (`https://fairsharing.org/`) is a curated resource of data standards, policies,
+and databases. If your service or the data formats it uses are listed in FAIRsharing,
+linking here helps with discoverability and FAIR compliance metadata.
+
+### Outreach and Survey fields (Section F)
+
+| Field | What it means |
+|---|---|
+| **Outreach consent** | You agree to de.NBI potentially showcasing your service on social media or newsletters. You can withdraw this consent at any time by editing your submission. |
+| **Survey participation** | You are willing to be contacted for de.NBI user surveys (e.g. annual usage statistics). Defaults to Yes. |
 
 ### License
 Select the license that governs how users may use your service.
 Select "Not applicable" for services without a software license (e.g. pure databases).
+
+---
+
+## Submission Status Lifecycle
+
+Your submission moves through these states:
+
+| Status | Meaning |
+|---|---|
+| **Draft** | Saved locally but not yet submitted. Draft submissions older than 30 days are automatically deleted. |
+| **Submitted** | Form submitted. The de.NBI administration office has been notified. |
+| **Under Review** | Actively being reviewed by the service coordination team. |
+| **Approved** | Your service has been accepted and will appear in the de.NBI services catalogue. |
+| **Rejected** | The submission was not accepted. You will receive an email explaining why. You may edit and resubmit. |
+
+If you edit a submission that was already **Approved**, the status resets to **Submitted** and the administration office is notified to re-review your changes.
 
 ---
 

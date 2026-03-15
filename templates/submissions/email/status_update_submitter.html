@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><style>
+body { font-family: Arial, sans-serif; font-size: 14px; color: #333; max-width: 600px; }
+h2 { color: #005b9a; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 13px; font-weight: bold; }
+.badge-submitted    { background: #cfe2ff; color: #0a58ca; }
+.badge-under_review { background: #fff3cd; color: #856404; }
+.badge-approved     { background: #d1e7dd; color: #0f5132; }
+.badge-rejected     { background: #f8d7da; color: #842029; }
+.meta { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 12px 16px; margin: 1rem 0; }
+.footer { margin-top: 2rem; font-size: 12px; color: #666; border-top: 1px solid #dee2e6; padding-top: 1rem; }
+</style></head>
+<body>
+<h2>de.NBI Service Registry — Status Update</h2>
+
+<p>Dear {{ submission.submitter_first_name }} {{ submission.submitter_last_name }},</p>
+<p>The status of your service registration has been updated.</p>
+
+<div class="meta">
+  <strong>Service:</strong> {{ submission.service_name }}<br>
+  <strong>New status:</strong>
+    <span class="badge badge-{{ submission.status }}">{{ submission.get_status_display }}</span><br>
+  <strong>Updated:</strong> {{ submission.updated_at|date:"Y-m-d H:i" }} UTC<br>
+  <strong>Submission ID:</strong> <code>{{ submission.id }}</code>
+</div>
+
+{% if submission.status == "approved" %}
+<p>&#10003; Your service has been <strong>approved</strong> and is now registered in the de.NBI Service Registry. Thank you for your submission.</p>
+{% elif submission.status == "rejected" %}
+<p>Your service registration was not approved at this time. If you have questions, please contact us at <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>.</p>
+{% elif submission.status == "under_review" %}
+<p>Your submission is currently <strong>under review</strong>. We will notify you once a decision has been made.</p>
+{% else %}
+<p>If you have questions about your submission, please contact us at <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>.</p>
+{% endif %}
+
+<div class="footer">
+  {{ CONTACT_ORG }} &bull; <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>
+</div>
+</body>
+</html>

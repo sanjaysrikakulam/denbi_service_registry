@@ -1,0 +1,101 @@
+site_name: de.NBI Service Registry
+site_description: Documentation for the de.NBI & ELIXIR-DE Service Registration System
+site_url: https://service-registry.bi.denbi.de/docs
+repo_url: https://github.com/deNBI/denbi_service_registry
+repo_name: deNBI/denbi_service_registry
+edit_uri: ""
+
+theme:
+  name: material
+  font: false # Use system fonts — better performance and no external requests
+  palette:
+    - scheme: default
+      primary: green
+      accent: light green
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: green
+      accent: light green
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.expand
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.highlight
+    - search.suggest
+    - search.share
+    - content.code.copy
+    - content.tabs.link
+    - content.tooltips
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.keys
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - javascripts/tablesort.min.js
+  - javascripts/tablesort.js
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Development Setup: development.md
+    - Configuration: configuration.md
+    - Deployment: deployment.md
+  - Usage:
+    - User Guide: user-guide.md
+    - Admin Guide: admin-guide.md
+    - API Reference: api-guide.md
+  - Operations:
+    - Architecture: architecture.md
+    - Rollout & Releases: rollout.md
+  - Development:
+    - Testing: testing.md
+    - Database Schema: database-schema.md
+    - Hosting the Docs: docs-hosting.md
+    - Extending Models: extending/model-changes.md
+    - Adding Apps: extending/adding-apps.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/deNBI
+    - icon: fontawesome/solid/globe
+      link: https://www.denbi.de
+
+copyright: Copyright &copy; 2026 de.NBI & ELIXIR-DE | Licensed under MIT License

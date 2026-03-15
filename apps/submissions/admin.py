@@ -18,9 +18,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.html import format_html, mark_safe
-from django.utils.translation import gettext_lazy as _
 
-from .models import ServiceSubmission, SubmissionAPIKey, _hash_key
+from .models import ServiceSubmission, SubmissionAPIKey
 from .tasks import send_submission_notification
 
 logger = logging.getLogger(__name__)
@@ -102,6 +101,10 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
     date_hierarchy = "submitted_at"
     save_on_top = True
     list_per_page = 30
+    list_select_related = ("service_center",)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related("api_keys")
 
     inlines = [SubmissionAPIKeyInline]
 

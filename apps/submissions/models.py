@@ -17,11 +17,9 @@ import hmac
 import secrets
 import unicodedata
 import uuid
-from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -378,6 +376,11 @@ class ServiceSubmission(models.Model):
         default=False,
         help_text="Consent to data protection information and privacy policy.",
     )
+
+    # DRF's throttle system calls request.user.is_authenticated.
+    # ServiceSubmission is used as request.user by SubmissionAPIKeyAuthentication,
+    # so it must satisfy this interface. A keyed submission is always "authenticated".
+    is_authenticated = True
 
     class Meta:
         verbose_name = "Service Submission"

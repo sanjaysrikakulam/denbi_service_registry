@@ -232,10 +232,12 @@ class TestSubmissionSanitisation:
 
     def test_unicode_normalised_nfc(self):
         import unicodedata
+        # "é" in NFD form (e + combining accent)
         decomposed = "te\u0301st"
-        sub = ServiceSubmissionFactory(submitter_name=decomposed + ", Institute")
+        # submitter_affiliation is a sanitised text field — should be NFC-normalised on save
+        sub = ServiceSubmissionFactory(submitter_affiliation=decomposed + " Institute")
         sub.refresh_from_db()
-        assert unicodedata.is_normalized("NFC", sub.submitter_name)
+        assert unicodedata.is_normalized("NFC", sub.submitter_affiliation)
 
     def test_whitespace_stripped(self):
         sub = ServiceSubmissionFactory(service_name="  Padded Name  ")

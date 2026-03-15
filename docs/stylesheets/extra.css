@@ -1,0 +1,93 @@
+/* ── Grid cards on home page ── */
+.md-typeset .grid.cards > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0;
+}
+
+.md-typeset .grid.cards > ul > li {
+  border: 0.05rem solid var(--md-default-fg-color--lightest);
+  border-radius: 0.4rem;
+  padding: 0.8rem 1rem;
+  list-style: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.md-typeset .grid.cards > ul > li:hover {
+  border-color: var(--md-accent-fg-color);
+  box-shadow: 0 0 0.4rem 0 var(--md-accent-fg-color--transparent);
+}
+
+/* ── Sortable table indicator ── */
+th[role="columnheader"]:not(.no-sort) {
+  cursor: pointer;
+}
+
+th[role="columnheader"]:not(.no-sort)::after {
+  content: " ⇅";
+  opacity: 0.4;
+  font-size: 0.75em;
+}
+
+th[role="columnheader"][aria-sort="ascending"]::after {
+  content: " ↑";
+  opacity: 0.9;
+}
+
+th[role="columnheader"][aria-sort="descending"]::after {
+  content: " ↓";
+  opacity: 0.9;
+}
+
+/* ── Status badge colours (used in cards) ── */
+.badge {
+  display: inline-block;
+  padding: 0.1em 0.5em;
+  border-radius: 0.2em;
+  font-size: 0.75em;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.badge-green  { background: var(--md-code-hl-keyword-color); color: #fff; }
+.badge-orange { background: #e67e22; color: #fff; }
+.badge-red    { background: var(--md-typeset-del-color); color: #fff; }
+.badge-grey   { background: var(--md-default-fg-color--lighter); color: #fff; }
+
+/* ── Hero section on home ── */
+.hero {
+  padding: 2rem 0 1.5rem;
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: 2.2rem !important;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.hero .subtitle {
+  font-size: 1.1rem;
+  color: var(--md-default-fg-color--light);
+  margin-bottom: 1.5rem;
+}
+
+/* ── Tighter section dividers ── */
+.md-typeset hr {
+  margin: 1.5em 0;
+}
+
+/* ── Admonition icon tweak ── */
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 0.3rem;
+}
+
+/* ── Stack badges on very narrow screens ── */
+@media screen and (max-width: 36em) {
+  .md-typeset .grid.cards > ul {
+    grid-template-columns: 1fr;
+  }
+}

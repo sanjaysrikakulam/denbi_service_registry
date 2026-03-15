@@ -4,7 +4,8 @@ Async Tasks
 Celery tasks for background processing — primarily email notifications.
 
 Tasks:
-  - send_submission_notification : Email admin on new submission or status change
+  - send_submission_notification : Email admin on new submission or status change;
+                                   also emails the submitter directly on status_changed
   - send_update_notification     : Email admin when a submitter edits a submission
   - cleanup_stale_drafts         : Periodic task to remove expired draft sessions
 """
@@ -104,6 +105,48 @@ def send_submission_notification(self, submission_id: str, event: str = "created
         logger.error(f"Failed to send notification for {submission_id}: {exc}")
         raise self.retry(exc=exc)
 
+    # On status changes, also notify the submitter directly with a
+    # submitter-facing email (not the internal admin notification above).
+    if event == "status_changed" and not override:
+        _send_submitter_status_email(submission)
+
+
+def _send_submitter_status_email(submission) -> None:
+    """
+    Send a submitter-facing status update email to the internal contact.
+
+    Kept separate from the admin notification so the submitter receives a
+    clear, plain-language message rather than the full internal report.
+    """
+    recipient = submission.internal_contact_email
+    if not recipient:
+        logger.warning(
+            f"No internal_contact_email on submission {submission.id} — skipping submitter notification"
+        )
+        return
+
+    subject = (
+        f"Your service registration status: {submission.get_status_display()} "
+        f"— {submission.service_name}"
+    )
+    context = {"submission": submission}
+    text_body = render_to_string("submissions/email/status_update_submitter.txt", context)
+    html_body = render_to_string("submissions/email/status_update_submitter.html", context)
+
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=text_body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[recipient],
+        reply_to=[settings.DEFAULT_FROM_EMAIL],
+    )
+    msg.attach_alternative(html_body, "text/html")
+    try:
+        msg.send(fail_silently=False)
+        logger.info(f"Submitter status email sent for submission {submission.id} to {recipient}")
+    except Exception as exc:
+        logger.error(f"Failed to send submitter status email for {submission.id}: {exc}")
+
 
 @shared_task(
     bind=True,
@@ -128,7 +171,6 @@ def cleanup_stale_drafts() -> int:
 
     Returns the number of sessions cleaned up.
     """
-    from django.contrib.sessions.backends.db import SessionStore
     from django.contrib.sessions.models import Session
 
     cutoff = timezone.now() - timedelta(hours=24)

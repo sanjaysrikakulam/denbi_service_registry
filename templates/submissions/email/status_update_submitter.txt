@@ -1,0 +1,25 @@
+de.NBI Service Registry — Submission Status Update
+====================================================
+
+Dear {{ submission.submitter_first_name }} {{ submission.submitter_last_name }},
+
+The status of your service registration has been updated.
+
+  Service:    {{ submission.service_name }}
+  New status: {{ submission.get_status_display|upper }}
+  Updated:    {{ submission.updated_at|date:"Y-m-d H:i" }} UTC
+
+{% if submission.status == "approved" %}Your service has been approved and is now registered in the de.NBI Service Registry.
+Thank you for your submission.
+{% elif submission.status == "rejected" %}Your service registration was not approved at this time.
+If you have questions, please contact us at {{ CONTACT_EMAIL }}.
+{% elif submission.status == "under_review" %}Your submission is currently under review. We will notify you once a decision has been made.
+{% else %}If you have questions about your submission, please contact us at {{ CONTACT_EMAIL }}.
+{% endif %}
+
+Submission ID: {{ submission.id }}
+
+---
+{{ CONTACT_ORG }}
+{{ CONTACT_EMAIL }}
+{{ WEBSITE_URL }}

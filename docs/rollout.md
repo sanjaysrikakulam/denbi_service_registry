@@ -1,3 +1,7 @@
+---
+icon: material/package-up
+---
+
 # Release, Rollout, and Rollback Runbook
 
 This document covers the full lifecycle of a code change from development to
@@ -10,13 +14,14 @@ deployment, rollback procedure, and post-release verification.
 
 The project uses **Semantic Versioning** (`MAJOR.MINOR.PATCH`):
 
-| Increment | When |
-|---|---|
-| `PATCH` (e.g. 1.0.1) | Bug fix, security patch, config-only change |
-| `MINOR` (e.g. 1.1.0) | New feature, new optional field, new API endpoint |
+| Increment            | When                                                      |
+| -------------------- | --------------------------------------------------------- |
+| `PATCH` (e.g. 1.0.1) | Bug fix, security patch, config-only change               |
+| `MINOR` (e.g. 1.1.0) | New feature, new optional field, new API endpoint         |
 | `MAJOR` (e.g. 2.0.0) | Breaking API change, major migration, architecture change |
 
 Version is tracked in **two places**:
+
 1. Git tag: `git tag v1.1.0`
 2. Docker image tag: `denbi-registry:v1.1.0`
 
@@ -59,7 +64,7 @@ name: CI
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    tags: ['v*']
   pull_request:
 
 jobs:
@@ -91,7 +96,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build and push image
         env:
-          IMAGE_TAG: ${{ github.ref_name }}   # e.g. v1.1.0
+          IMAGE_TAG: ${{ github.ref_name }} # e.g. v1.1.0
         run: |
           docker build -t ghcr.io/denbi/service-registry:${IMAGE_TAG} .
           docker push ghcr.io/denbi/service-registry:${IMAGE_TAG}
@@ -132,9 +137,9 @@ deploy-production:
   stage: deploy-production
   only: [tags]
   environment: production
-  when: manual    # Requires explicit click in GitLab UI
+  when: manual # Requires explicit click in GitLab UI
   script:
-    - ssh deploy@registry.denbi.de "IMAGE_TAG=$CI_COMMIT_TAG /opt/denbi/scripts/deploy.sh"
+    - ssh deploy@service-registry.bi.denbi.de "IMAGE_TAG=$CI_COMMIT_TAG /opt/denbi/scripts/deploy.sh"
 ```
 
 ---
@@ -211,6 +216,7 @@ IMAGE_TAG=v1.1.0 /opt/denbi/scripts/deploy.sh
 ```
 
 This is zero-downtime because:
+
 - Migrations run before new code starts (new schema is backward-compatible)
 - `docker compose up -d --no-deps` starts new containers before removing old
 - Nginx continues serving requests throughout
@@ -255,7 +261,7 @@ IMAGE_TAG=v1.0.0 docker compose \
   up -d --no-deps web worker beat
 
 # Verify
-curl https://registry.denbi.de/health/ready/
+curl https://service-registry.bi.denbi.de/health/ready/
 ```
 
 ### Rollback including a migration
@@ -303,6 +309,7 @@ IMAGE_TAG=v1.0.0 /opt/denbi/scripts/deploy.sh
 Run through this on staging after every deployment, before promoting to production.
 
 **Functional checks:**
+
 - [ ] `GET /health/ready/` returns `{"status": "ok"}`
 - [ ] `GET /` loads the home page without errors
 - [ ] `GET /register/` loads the full form
@@ -326,6 +333,7 @@ Run through this on staging after every deployment, before promoting to producti
 - [ ] Approve a submission via admin → status email sent
 
 **Security checks:**
+
 - [ ] `http://` redirects to `https://` (301)
 - [ ] `Strict-Transport-Security` header present in response
 - [ ] `X-Frame-Options: DENY` present

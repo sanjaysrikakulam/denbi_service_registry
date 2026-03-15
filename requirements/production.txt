@@ -1,4 +1,7 @@
 -r base.txt
 
+# WSGI server
+gunicorn==25.1.0
+
 # Error tracking
 sentry-sdk[django]==2.19.2

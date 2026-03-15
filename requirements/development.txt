@@ -7,9 +7,14 @@ pytest-cov==6.0.0
 factory-boy==3.3.1            # Test fixtures / model factories
 
 # Code quality
-ruff==0.9.1                   # Fast linter + formatter
+ruff==0.9.1                   # Linter + formatter
 mypy==1.14.1
 django-stubs==5.1.1
+pip-audit==2.9.0              # Dependency vulnerability scanner
+
+# Documentation
+mkdocs==1.6.1
+mkdocs-material==9.6.7        # Material theme (readthedocs-style)
 
 # Development utilities
 ipython==8.31.0

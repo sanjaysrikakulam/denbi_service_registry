@@ -16,11 +16,10 @@ Authentication strategy
 """
 import logging
 
-from django.conf import settings
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import AllowAny, IsAdminUser
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from apps.registry.models import PrincipalInvestigator, ServiceCategory, ServiceCenter
@@ -28,7 +27,7 @@ from apps.submissions.models import ServiceSubmission, SubmissionAPIKey
 from apps.submissions.tasks import send_submission_notification
 
 from .authentication import SubmissionAPIKeyAuthentication
-from .permissions import IsAdminOrOwner, IsAdminTokenUser, IsSubmissionOwner
+from .permissions import IsAdminOrOwner, IsAdminTokenUser
 from .serializers import (
     PrincipalInvestigatorSerializer,
     ServiceCategorySerializer,

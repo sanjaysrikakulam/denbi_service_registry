@@ -32,9 +32,9 @@ def site_context(request):
     feats  = sc.get("features",{})
 
     # ---------------------------------------------------------------------------
-    # Logo URL resolution — same priority chain as before:
+    # Logo URL resolution:
     #   1. site.toml [site] logo_url
-    #   2. Static file auto-detection (static/img/logo.{png,svg,…})
+    #   2. Static file auto-detection (static/img/logo.{svg,png,…})
     #   3. Empty string → CSS text fallback in base.html
     # ---------------------------------------------------------------------------
     logo_url = site.get("logo_url", "")
@@ -43,6 +43,20 @@ def site_context(request):
         for ext in ("svg", "png", "jpg", "jpeg", "webp"):
             if (static_img / f"logo.{ext}").exists():
                 logo_url = static(f"img/logo.{ext}")
+                break
+
+    # ---------------------------------------------------------------------------
+    # Favicon URL resolution:
+    #   1. site.toml [site] favicon_url
+    #   2. Static file auto-detection (static/img/favicon.ico or favicon.png)
+    #   3. Empty string → no <link rel="icon"> rendered
+    # ---------------------------------------------------------------------------
+    favicon_url = site.get("favicon_url", "")
+    if not favicon_url:
+        static_img = Path(dj_settings.BASE_DIR) / "static" / "img"
+        for fname in ("favicon.ico", "favicon.png", "favicon.svg"):
+            if (static_img / fname).exists():
+                favicon_url = static(f"img/{fname}")
                 break
 
     return {
@@ -56,6 +70,7 @@ def site_context(request):
         },
         # Top-level shortcuts for the most-used values
         "LOGO_URL":          logo_url,
+        "FAVICON_URL":       favicon_url,
         "SITE_NAME":         site.get("name",    "de.NBI Service Registry"),
         "SITE_URL":          site.get("url",     ""),
         "CONTACT_EMAIL":     cont.get("email",   "servicecoordination@denbi.de"),

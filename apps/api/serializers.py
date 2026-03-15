@@ -13,7 +13,7 @@ from rest_framework import serializers
 
 from apps.edam.models import EdamTerm
 from apps.registry.models import PrincipalInvestigator, ServiceCategory, ServiceCenter
-from apps.submissions.models import ServiceSubmission, SubmissionAPIKey
+from apps.submissions.models import ServiceSubmission
 
 
 # ---------------------------------------------------------------------------
@@ -122,12 +122,18 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
             # Section F
             "keywords_uncited", "keywords_seo",
             "outreach_consent", "survey_participation", "comments",
+            # Section G — write-only; must be True to create/update
+            "data_protection_consent",
             # bio.tools integrated record (auto-synced, read-only)
             "biotoolsrecord",
             # Links
             "links",
         ]
         read_only_fields = ["id", "status", "submitted_at", "updated_at"]
+        extra_kwargs = {
+            # Never echo consent back in responses — it is always True for valid records
+            "data_protection_consent": {"write_only": True},
+        }
 
     def get_edam_topics(self, obj) -> list:
         from apps.api.serializers import EdamTermSerializer  # avoid circular at class level
@@ -170,6 +176,14 @@ class SubmissionDetailSerializer(serializers.ModelSerializer):
         if data.get("is_toolbox") and not data.get("toolbox_name", "").strip():
             raise serializers.ValidationError(
                 {"toolbox_name": "Toolbox name is required when is_toolbox is True."}
+            )
+        # data_protection_consent is mandatory on create; DRF does not call
+        # Model.clean() automatically, so we enforce it here.
+        if self.instance is None and not data.get("data_protection_consent"):
+            raise serializers.ValidationError(
+                {"data_protection_consent": (
+                    "You must consent to the data protection information to submit this form."
+                )}
             )
         return data
 

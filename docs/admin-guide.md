@@ -1,3 +1,7 @@
+---
+icon: material/shield-account
+---
+
 # Admin Guide — de.NBI Service Registry
 
 ## Accessing the Admin Portal
@@ -28,7 +32,10 @@ The detail view shows all form sections A–G plus:
 
 ### Changing Submission Status
 
-**Individual:** Open a submission, change the Status field, and save. A notification email is automatically sent to the internal contact.
+**Individual:** Open a submission, change the Status field, and save. Two emails are sent automatically:
+
+- **Admin notification** — sent to the registry coordination address (`[contact] email` in `site.toml`), CC'd to `SUBMISSION_NOTIFY_CC` if configured.
+- **Submitter notification** — sent directly to the `internal_contact_email` of the submission with a plain-language status update ("Your service has been approved / was not approved at this time"). This is separate from the admin email so the submitter receives a clear, action-oriented message rather than the full internal report.
 
 **Bulk:** Select submissions in the list view, then choose an action from the dropdown:
 - Approve selected submissions
@@ -92,7 +99,16 @@ All key operations are logged in Django's admin audit log (History tab on the su
 **Location:** Admin → EDAM Ontology → EDAM Terms
 
 EDAM terms are imported from the official EDAM ontology release and are read-only in the admin.
-You cannot add or delete terms manually — all changes come from the `sync_edam` command.
+Terms cannot be added or deleted manually — all changes come through a sync.
+
+### How seeding works
+
+| Trigger | When | Notes |
+|---|---|---|
+| **Auto-seed on first migrate** | Once, on a fresh database | Fires automatically as a `post_migrate` signal when the `EdamTerm` table is empty. Downloads ~3 MB, takes ~30 s. |
+| **Monthly beat schedule** | Every 30 days | Celery beat task `edam.sync` keeps terms current as EDAM publishes new releases. |
+| **Admin "Sync EDAM" button** | On demand | Queues a background Celery task. Useful after a known EDAM release or if the automatic sync failed. |
+| **CLI** | On demand | `python manage.py sync_edam` — synchronous, progress shown in terminal. |
 
 ### Viewing Terms
 
@@ -103,42 +119,47 @@ Search by label or definition text.
 
 ### Checking the Loaded Version
 
-In the admin list, the **EDAM version** column shows which EDAM release each term was last
-loaded from (e.g. `1.25`). All terms should show the same version after a successful sync.
+The **EDAM version** column shows which release each term was last loaded from (e.g. `1.25`).
+All terms should show the same version after a successful sync.
 
-### Updating EDAM Terms
+### Triggering a manual sync
 
-When the EDAM consortium publishes a new release:
+**From the admin UI** (recommended — no shell access needed):
+
+1. Go to **EDAM Ontology → EDAM Terms**
+2. Click **↻ Sync EDAM from upstream** in the top-right toolbar
+3. A green message confirms the task was queued
+4. Refresh the page after ~30 seconds to see the updated term count and version
+
+**From the CLI**:
 
 ```bash
-# Check the current version loaded
-docker compose exec web python manage.py shell -c \
-  "from apps.edam.models import EdamTerm; print(EdamTerm.objects.values('edam_version').distinct())"
-
-# Download and import the new release
+# Download and import the latest stable release
 docker compose exec web python manage.py sync_edam
 
-# Or specify a local file (useful if outbound HTTP is blocked)
-docker compose exec web python manage.py sync_edam --url /path/to/EDAM.json
-
-# Dry-run to see counts before writing
+# Dry-run — parse and count terms without writing to the database
 docker compose exec web python manage.py sync_edam --dry-run
 
 # Sync a single branch only
 docker compose exec web python manage.py sync_edam --branch topic
+
+# Load from a local file (air-gapped servers)
+docker compose exec web python manage.py sync_edam --url /app/EDAM.owl
 ```
 
 New terms appear immediately in the form. Obsolete terms are hidden from the form but
-retained in the database (so existing submissions referencing them are not broken).
+retained in the database so existing submissions referencing them are not broken.
 
 ### If the Form Shows No EDAM Terms
 
-The most likely cause is that `sync_edam` was never run. Check:
+On a standard deployment this should not happen — the auto-seed fires on first migrate.
+If the dropdowns are empty, check the term count:
 
 ```bash
 docker compose exec web python manage.py shell -c \
   "from apps.edam.models import EdamTerm; print(EdamTerm.objects.count())"
-# Should be ~4000. If 0, run: python manage.py sync_edam
+# Expected: ~3400. If 0, the auto-seed failed (check migrate output for [edam] lines).
+# Fix: docker compose exec web python manage.py sync_edam
 ```
 
 ---
@@ -202,6 +223,31 @@ docker compose exec web python manage.py sync_biotools \
   --create
 ```
 
+### Stale Draft Cleanup {#stale-drafts}
+
+Submissions left in `draft` status (saved but never submitted) are automatically purged
+by the `cleanup_stale_drafts` Celery beat task, which runs daily at **03:00 UTC**.
+
+The default retention period is **30 days** — drafts older than 30 days are deleted permanently.
+
+To change the retention period, edit `STALE_DRAFT_DAYS` in `config/settings.py`:
+
+```python
+STALE_DRAFT_DAYS = 30  # days; set to 0 to disable automatic cleanup
+```
+
+To trigger cleanup manually:
+
+```bash
+docker compose exec web python manage.py shell -c "
+from apps.submissions.tasks import cleanup_stale_drafts
+result = cleanup_stale_drafts()
+print(result)
+"
+```
+
+---
+
 ### Periodic Sync Schedule
 
 All bio.tools records are refreshed automatically every 24 hours by a Celery beat task.
@@ -250,9 +296,14 @@ SUBMISSION_NOTIFY_OVERRIDE=                  # Override recipient for testing
 ```
 
 Events that trigger emails:
-- New submission created
-- Submission updated by submitter
-- Status changed by admin (approve/reject/review)
+
+| Event | Recipient(s) | Template |
+|---|---|---|
+| New submission created | Admin + `SUBMISSION_NOTIFY_CC` (CC: `internal_contact_email`) | `notification.html` |
+| Submitter edits via update form | Admin + `SUBMISSION_NOTIFY_CC` | `notification.html` |
+| Status changed by admin | Admin + `SUBMISSION_NOTIFY_CC` **and** `internal_contact_email` (separate submitter email) | `notification.html` + `status_update_submitter.html` |
+
+The submitter email on status change is suppressed when `SUBMISSION_NOTIFY_OVERRIDE` is set (e.g. in staging/testing), so test environments do not accidentally send submitter-facing emails.
 
 ---
 
@@ -283,9 +334,14 @@ Check task queue health:
 docker compose exec worker celery -A config inspect active
 docker compose exec worker celery -A config inspect stats
 
-# Check scheduled tasks (should include cleanup-stale-drafts and sync-biotools-daily)
+# Check scheduled tasks (should include cleanup-stale-drafts, sync-biotools-daily, sync-edam-monthly)
 docker compose exec worker celery -A config inspect scheduled
+
+# Ping the worker directly (same check used by the Docker healthcheck)
+docker compose exec worker celery -A config inspect ping
 ```
+
+The `worker` container reports a Docker health status based on `celery inspect ping`. The `beat` container has no inspection API so its healthcheck is disabled — liveness is inferred from the process staying up.
 
 ---
 

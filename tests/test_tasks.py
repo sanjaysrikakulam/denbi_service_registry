@@ -21,11 +21,14 @@ def celery_eager(settings):
 class TestSubmissionNotificationTask:
 
     def test_notification_sent_on_create(self):
+        # Primary recipient is the site coordinator (from SITE_CONFIG).
+        # The submission's internal_contact_email is added to CC.
         sub = ServiceSubmissionFactory(internal_contact_email="admin@example.com")
         from apps.submissions.tasks import send_submission_notification
         send_submission_notification(str(sub.id), event="created")
         assert len(mail.outbox) == 1
-        assert "admin@example.com" in mail.outbox[0].to
+        all_recipients = mail.outbox[0].to + mail.outbox[0].cc
+        assert "admin@example.com" in all_recipients
 
     def test_notification_subject_contains_service_name(self):
         sub = ServiceSubmissionFactory(service_name="Galaxy Europe")

@@ -1,3 +1,7 @@
+---
+icon: material/puzzle
+---
+
 # Extending Models and Database Schema
 
 This guide covers every scenario where you need to change the data model:
@@ -17,6 +21,7 @@ When you run `manage.py migrate`, Django compares what's in that table against
 the migration files and applies anything that hasn't run yet — in dependency order.
 
 **Golden rules:**
+
 - Never edit an existing migration file after it has been applied to any environment.
 - Never delete migration files. Squash them instead (see below).
 - Always generate migrations in development; commit the file; apply in production.
@@ -399,7 +404,7 @@ docker compose run --rm web python manage.py migrate
 docker compose up -d --no-deps web worker beat
 
 # 4. Verify
-curl https://registry.denbi.de/health/ready/
+curl https://service-registry.bi.denbi.de/health/ready/
 docker compose logs web --tail 50
 ```
 
@@ -426,13 +431,13 @@ docker compose up -d --no-deps web worker beat --image denbi-registry:v1.0.0
 
 The API is versioned at `/api/v1/`. Follow these rules when changing models:
 
-| Change type | Action required |
-|---|---|
-| Add optional field | Add to serialiser `fields`; document in API guide; no version bump |
-| Add required field | Add to serialiser `fields`; update OpenAPI schema; no version bump if additive |
-| Rename a field | Keep old name as deprecated alias (`SerializerMethodField`); version bump at `/api/v2/` when ready to remove |
-| Remove a field | Two-phase: deprecate in v1 (return `null`), remove in v2 |
-| Change field type | Always a breaking change → new API version |
+| Change type        | Action required                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Add optional field | Add to serialiser `fields`; document in API guide; no version bump                                           |
+| Add required field | Add to serialiser `fields`; update OpenAPI schema; no version bump if additive                               |
+| Rename a field     | Keep old name as deprecated alias (`SerializerMethodField`); version bump at `/api/v2/` when ready to remove |
+| Remove a field     | Two-phase: deprecate in v1 (return `null`), remove in v2                                                     |
+| Change field type  | Always a breaking change → new API version                                                                   |
 
 ---
 

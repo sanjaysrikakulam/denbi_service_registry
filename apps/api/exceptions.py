@@ -1,7 +1,6 @@
 """Custom DRF exception handler — adds request_id to error responses."""
 import logging
 from rest_framework.views import exception_handler
-from rest_framework.response import Response
 
 logger = logging.getLogger(__name__)
 
