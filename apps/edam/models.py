@@ -30,14 +30,15 @@ again when a new EDAM release is published.
 
 See: https://edamontology.org/  and  https://github.com/edamontology/edamontology
 """
+
 from django.db import models
 
 
 class EdamBranch(models.TextChoices):
-    TOPIC      = "topic",      "Topic"
-    OPERATION  = "operation",  "Operation"
-    DATA       = "data",       "Data"
-    FORMAT     = "format",     "Format"
+    TOPIC = "topic", "Topic"
+    OPERATION = "operation", "Operation"
+    DATA = "data", "Data"
+    FORMAT = "format", "Format"
     IDENTIFIER = "identifier", "Identifier"
 
 

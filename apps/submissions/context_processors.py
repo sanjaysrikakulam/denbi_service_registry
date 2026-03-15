@@ -12,6 +12,7 @@ All values from config/site.toml are injected into every template as the
 The full structure mirrors site.toml exactly, so adding a new key there
 makes it immediately available in all templates without touching Python code.
 """
+
 from pathlib import Path
 
 from django.conf import settings as dj_settings
@@ -25,11 +26,11 @@ def site_context(request):
     """
     sc: dict = getattr(dj_settings, "SITE_CONFIG", {})
 
-    site   = sc.get("site",    {})
-    cont   = sc.get("contact", {})
-    links  = sc.get("links",   {})
-    email  = sc.get("email",   {})
-    feats  = sc.get("features",{})
+    site = sc.get("site", {})
+    cont = sc.get("contact", {})
+    links = sc.get("links", {})
+    email = sc.get("email", {})
+    feats = sc.get("features", {})
 
     # ---------------------------------------------------------------------------
     # Logo URL resolution:
@@ -63,20 +64,24 @@ def site_context(request):
         # Full config dict — {{ SITE.contact.email }}, {{ SITE.links.kpi_cheatsheet }}, …
         "SITE": {
             **site,
-            "contact":  cont,
-            "links":    links,
-            "email":    email,
+            "contact": cont,
+            "links": links,
+            "email": email,
             "features": feats,
         },
         # Top-level shortcuts for the most-used values
-        "LOGO_URL":          logo_url,
-        "FAVICON_URL":       favicon_url,
-        "SITE_NAME":         site.get("name",    "de.NBI Service Registry"),
-        "SITE_URL":          site.get("url",     ""),
-        "CONTACT_EMAIL":     cont.get("email",   "servicecoordination@denbi.de"),
-        "CONTACT_OFFICE":    cont.get("office",  ""),
-        "CONTACT_ORG":       cont.get("organisation", "German Network for Bioinformatics Infrastructure"),
-        "PRIVACY_POLICY_URL":links.get("privacy_policy", "https://www.denbi.de/privacy-policy"),
-        "IMPRINT_URL":       links.get("imprint",        "https://www.denbi.de/imprint"),
-        "WEBSITE_URL":       links.get("website",        "https://www.denbi.de"),
+        "LOGO_URL": logo_url,
+        "FAVICON_URL": favicon_url,
+        "SITE_NAME": site.get("name", "de.NBI Service Registry"),
+        "SITE_URL": site.get("url", ""),
+        "CONTACT_EMAIL": cont.get("email", "servicecoordination@denbi.de"),
+        "CONTACT_OFFICE": cont.get("office", ""),
+        "CONTACT_ORG": cont.get(
+            "organisation", "German Network for Bioinformatics Infrastructure"
+        ),
+        "PRIVACY_POLICY_URL": links.get(
+            "privacy_policy", "https://www.denbi.de/privacy-policy"
+        ),
+        "IMPRINT_URL": links.get("imprint", "https://www.denbi.de/imprint"),
+        "WEBSITE_URL": links.get("website", "https://www.denbi.de"),
     }

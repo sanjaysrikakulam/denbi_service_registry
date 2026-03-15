@@ -8,4 +8,5 @@ class BioToolsConfig(AppConfig):
 
     def ready(self):
         from .signals import connect_signals
+
         connect_signals()

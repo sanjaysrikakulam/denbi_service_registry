@@ -2,11 +2,11 @@
 Add scope field to SubmissionAPIKey.
 Default is 'write' to preserve existing key behaviour.
 """
+
 from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("submissions", "0001_initial"),
     ]
@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
             name="scope",
             field=models.CharField(
                 choices=[
-                    ("read",  "Read-only  (GET retrieve only)"),
+                    ("read", "Read-only  (GET retrieve only)"),
                     ("write", "Read-write (GET retrieve + PATCH update)"),
                 ],
                 default="write",

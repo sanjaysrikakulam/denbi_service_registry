@@ -9,6 +9,7 @@ SubmissionAPIKeyAuthentication:
   - Returns (submission, key_obj) as the DRF user/auth pair
   - Revoked or invalid keys return the same AuthenticationFailed — no state leakage
 """
+
 import logging
 
 from rest_framework.authentication import BaseAuthentication
@@ -37,7 +38,7 @@ class SubmissionAPIKeyAuthentication(BaseAuthentication):
         if not auth_header.startswith(f"{self.keyword} "):
             return None  # Not our scheme — let other authenticators try
 
-        plaintext = auth_header[len(self.keyword) + 1:].strip()
+        plaintext = auth_header[len(self.keyword) + 1 :].strip()
         if not plaintext:
             raise AuthenticationFailed("API key is empty.")
 

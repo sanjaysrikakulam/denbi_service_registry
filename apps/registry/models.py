@@ -12,6 +12,7 @@ Models:
 All models use soft-delete (is_active flag) so that removing a PI or centre
 from the dropdown does not break existing submission foreign keys.
 """
+
 import uuid
 import re
 
@@ -22,6 +23,7 @@ from django.db import models
 # ---------------------------------------------------------------------------
 # ServiceCategory
 # ---------------------------------------------------------------------------
+
 
 class ServiceCategory(models.Model):
     """
@@ -56,6 +58,7 @@ class ServiceCategory(models.Model):
 # ---------------------------------------------------------------------------
 # ServiceCenter
 # ---------------------------------------------------------------------------
+
 
 class ServiceCenter(models.Model):
     """
@@ -97,6 +100,7 @@ class ServiceCenter(models.Model):
 # ---------------------------------------------------------------------------
 # PrincipalInvestigator
 # ---------------------------------------------------------------------------
+
 
 def _validate_orcid(value: str) -> None:
     """Validate ORCID iD format (0000-0000-0000-000X) including checksum."""

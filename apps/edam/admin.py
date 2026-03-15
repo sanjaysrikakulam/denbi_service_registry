@@ -10,7 +10,14 @@ class EdamTermAdmin(admin.ModelAdmin):
     list_display = ("accession", "label", "branch", "is_obsolete", "edam_version")
     list_filter = ("branch", "is_obsolete")
     search_fields = ("accession", "label", "definition")
-    readonly_fields = ("uri", "accession", "branch", "sort_order", "edam_version", "parent")
+    readonly_fields = (
+        "uri",
+        "accession",
+        "branch",
+        "sort_order",
+        "edam_version",
+        "parent",
+    )
     ordering = ("branch", "sort_order")
     change_list_template = "admin/edam/edamterm/change_list.html"
 

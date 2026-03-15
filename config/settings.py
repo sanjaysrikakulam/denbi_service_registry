@@ -11,8 +11,10 @@ Required variables (no defaults — startup fails if missing):
 
 See .env.example for the full variable reference.
 """
+
 import os
 import sys
+import tomllib as _tomllib
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,7 +25,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # All non-secret, human-editable settings live in site.toml.
 # Secrets and connection details stay in .env.
 # ---------------------------------------------------------------------------
-import tomllib as _tomllib
 
 _SITE_CONFIG_PATH = BASE_DIR / "config" / "site.toml"
 try:
@@ -31,6 +32,7 @@ try:
         SITE_CONFIG: dict = _tomllib.load(_f)
 except FileNotFoundError:
     import sys
+
     print(
         f"WARNING: {_SITE_CONFIG_PATH} not found. "
         "Using built-in defaults. Copy config/site.toml.example if needed.",
@@ -39,14 +41,14 @@ except FileNotFoundError:
     SITE_CONFIG = {}
 
 # Convenience accessors — these are used directly in settings below
-_sc        = SITE_CONFIG
-_sc_site   = _sc.get("site",    {})
-_sc_cont   = _sc.get("contact", {})
-_sc_email  = _sc.get("email",   {})
-_sc_links  = _sc.get("links",   {})
-_sc_api    = _sc.get("api",     {})
-_sc_edam   = _sc.get("edam",    {})
-_sc_admin  = _sc.get("admin",   {})
+_sc = SITE_CONFIG
+_sc_site = _sc.get("site", {})
+_sc_cont = _sc.get("contact", {})
+_sc_email = _sc.get("email", {})
+_sc_links = _sc.get("links", {})
+_sc_api = _sc.get("api", {})
+_sc_edam = _sc.get("edam", {})
+_sc_admin = _sc.get("admin", {})
 
 
 def env(key, default=None, required=False):
@@ -219,10 +221,14 @@ CSRF_COOKIE_SAMESITE = "Strict"
 X_FRAME_OPTIONS = "DENY"
 
 # EDAM OWL URL: site.toml → [edam] owl_url, overridden by EDAM_OWL_URL env var
-EDAM_OWL_URL = env("EDAM_OWL_URL", default=None) or _sc_edam.get("owl_url", "https://edamontology.org/EDAM_stable.owl")
+EDAM_OWL_URL = env("EDAM_OWL_URL", default=None) or _sc_edam.get(
+    "owl_url", "https://edamontology.org/EDAM_stable.owl"
+)
 
 # Admin URL prefix: site.toml → [admin] url_prefix, overridden by ADMIN_URL_PREFIX env var
-ADMIN_URL_PREFIX = env("ADMIN_URL_PREFIX", default=None) or _sc_admin.get("url_prefix", "admin")
+ADMIN_URL_PREFIX = env("ADMIN_URL_PREFIX", default=None) or _sc_admin.get(
+    "url_prefix", "admin"
+)
 RATE_LIMIT_SUBMIT = env("RATE_LIMIT_SUBMIT", "10/h")
 RATE_LIMIT_UPDATE = env("RATE_LIMIT_UPDATE", "20/h")
 
@@ -250,9 +256,13 @@ AXES_IPWARE_META_PRECEDENCE_ORDER = [
 ]
 
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-     "OPTIONS": {"min_length": 12}},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 12},
+    },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
@@ -262,8 +272,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # ---------------------------------------------------------------------------
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND",
-    "django.core.mail.backends.console.EmailBackend" if DEBUG
-    else "django.core.mail.backends.smtp.EmailBackend"
+    "django.core.mail.backends.console.EmailBackend"
+    if DEBUG
+    else "django.core.mail.backends.smtp.EmailBackend",
 )
 EMAIL_HOST = env("EMAIL_HOST", "localhost")
 EMAIL_PORT = env_int("EMAIL_PORT", 587)
@@ -271,7 +282,9 @@ EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
 # Email from: env var overrides site.toml which overrides hardcoded default
-DEFAULT_FROM_EMAIL = env("EMAIL_FROM", _sc_email.get("from_address", "no-reply@denbi.de"))
+DEFAULT_FROM_EMAIL = env(
+    "EMAIL_FROM", _sc_email.get("from_address", "no-reply@denbi.de")
+)
 EMAIL_SUBJECT_PREFIX = _sc_email.get("subject_prefix", "[de.NBI Registry]")
 SUBMISSION_NOTIFY_CC = env_list("SUBMISSION_NOTIFY_CC", "")
 SUBMISSION_NOTIFY_OVERRIDE = env("SUBMISSION_NOTIFY_OVERRIDE", "")
@@ -294,15 +307,15 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULE = {
     "cleanup-stale-drafts": {
         "task": "apps.submissions.tasks.cleanup_stale_drafts",
-        "schedule": 86400,          # every 24 hours
+        "schedule": 86400,  # every 24 hours
     },
     "sync-biotools-daily": {
         "task": "biotools.sync_all",
-        "schedule": 86400,          # daily
+        "schedule": 86400,  # daily
     },
     "sync-edam-monthly": {
         "task": "edam.sync",
-        "schedule": 2592000,        # every 30 days (~monthly)
+        "schedule": 2592000,  # every 30 days (~monthly)
     },
 }
 
@@ -354,10 +367,15 @@ SPECTACULAR_SETTINGS = {
     ),
     "VERSION": _sc_api.get("version", "1.0.0"),
     "SERVE_INCLUDE_SCHEMA": False,
-    "CONTACT": {"email": _sc_cont.get("email", "servicecoordination@denbi.de"),
-                "url":   _sc_site.get("url", "")},
+    "CONTACT": {
+        "email": _sc_cont.get("email", "servicecoordination@denbi.de"),
+        "url": _sc_site.get("url", ""),
+    },
     "LICENSE": {"name": _sc_api.get("license_name", "MIT")},
-    "SWAGGER_UI_SETTINGS": {"persistAuthorization": True, "displayRequestDuration": True},
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,
+        "displayRequestDuration": True,
+    },
     # Vendor swagger-ui and redoc locally — no CDN requests (GDPR).
     # swagger-ui-dist 5.18.2, redoc 2.2.0 — vendored in static/swagger-ui/ and static/redoc/
     "SWAGGER_UI_DIST": "/static/swagger-ui",
@@ -402,6 +420,7 @@ CORS_ALLOW_METHODS = ["GET", "POST", "PATCH", "OPTIONS"]
 CORS_ALLOW_HEADERS = ["authorization", "content-type", "x-csrftoken"]
 CORS_PREFLIGHT_MAX_AGE = 86400
 
+
 # ---------------------------------------------------------------------------
 # Content Security Policy
 # ---------------------------------------------------------------------------
@@ -411,6 +430,7 @@ CORS_PREFLIGHT_MAX_AGE = 86400
 # tight even when the logo is hosted elsewhere.
 def _csp_img_origins() -> tuple:
     from urllib.parse import urlparse
+
     origins = {"'self'", "data:"}
     for key in ("logo_url", "favicon_url"):
         url = _sc_site.get(key, "")
@@ -422,20 +442,23 @@ def _csp_img_origins() -> tuple:
 
 CONTENT_SECURITY_POLICY = {
     "DIRECTIVES": {
-        "default-src":      ("'self'",),
+        "default-src": ("'self'",),
         # 'unsafe-inline' is required because templates use inline <script> blocks
         # and inline event handlers (e.g. onerror). To remove it, extract all
         # inline JS to static files and use nonces on remaining script elements.
-        "script-src":       ("'self'", "'unsafe-inline'"),
-        "style-src":        ("'self'", "'unsafe-inline'"),  # Bootstrap uses inline styles via JS
-        "img-src":          _csp_img_origins(),
-        "font-src":         ("'self'",),
-        "connect-src":      ("'self'",),
-        "frame-src":        ("'none'",),
-        "frame-ancestors":  ("'none'",),
-        "form-action":      ("'self'",),
-        "base-uri":         ("'self'",),
-        "object-src":       ("'none'",),
+        "script-src": ("'self'", "'unsafe-inline'"),
+        "style-src": (
+            "'self'",
+            "'unsafe-inline'",
+        ),  # Bootstrap uses inline styles via JS
+        "img-src": _csp_img_origins(),
+        "font-src": ("'self'",),
+        "connect-src": ("'self'",),
+        "frame-src": ("'none'",),
+        "frame-ancestors": ("'none'",),
+        "form-action": ("'self'",),
+        "base-uri": ("'self'",),
+        "object-src": ("'none'",),
         "upgrade-insecure-requests": not DEBUG,
     },
 }
@@ -464,7 +487,9 @@ LOGGING = {
     "disable_existing_loggers": False,
     "filters": {
         "require_debug_false": {"()": "django.utils.log.RequireDebugFalse"},
-        "scrub_sensitive": {"()": "apps.submissions.logging_filters.ScrubSensitiveFilter"},
+        "scrub_sensitive": {
+            "()": "apps.submissions.logging_filters.ScrubSensitiveFilter"
+        },
     },
     "formatters": {
         "json": {
@@ -489,8 +514,16 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {
         "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
-        "django.request": {"handlers": ["console", "mail_admins"], "level": "ERROR", "propagate": False},
-        "apps": {"handlers": ["console"], "level": "DEBUG" if DEBUG else "INFO", "propagate": False},
+        "django.request": {
+            "handlers": ["console", "mail_admins"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "apps": {
+            "handlers": ["console"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
         "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }
@@ -503,6 +536,7 @@ if _sentry_dsn:
     import sentry_sdk
     from sentry_sdk.integrations.django import DjangoIntegration
     from sentry_sdk.integrations.celery import CeleryIntegration
+
     sentry_sdk.init(
         dsn=_sentry_dsn,
         integrations=[DjangoIntegration(), CeleryIntegration()],

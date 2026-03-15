@@ -12,6 +12,7 @@ Security notes:
   - hmac.compare_digest is used for all key lookups (constant-time comparison).
   - Revoked keys (is_active=False) return the same 403 as invalid keys.
 """
+
 import hashlib
 import hmac
 import secrets
@@ -31,6 +32,7 @@ from apps.registry.models import PrincipalInvestigator, ServiceCategory, Service
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _sanitise_text(value: str) -> str:
     """
     Sanitise free-text input:
@@ -49,7 +51,9 @@ def _validate_https_url(value: str) -> None:
     """Reject any URL that does not use the https:// scheme."""
     if value and not value.startswith("https://"):
         raise ValidationError(
-            _("URL must use the https:// scheme. Plain http:// and other schemes are not accepted."),
+            _(
+                "URL must use the https:// scheme. Plain http:// and other schemes are not accepted."
+            ),
             code="insecure_url",
         )
 
@@ -66,12 +70,15 @@ def _validate_biotools_url(value: str) -> None:
 
 def _validate_fairsharing_url(value: str) -> None:
     if value and not value.startswith("https://fairsharing.org/"):
-        raise ValidationError(_("FAIRsharing URL must start with https://fairsharing.org/"))
+        raise ValidationError(
+            _("FAIRsharing URL must start with https://fairsharing.org/")
+        )
 
 
 def _validate_publications(value: str) -> None:
     """Validate comma-separated PMIDs or DOIs."""
     import re
+
     if not value:
         return
     tokens = [t.strip() for t in value.split(",") if t.strip()]
@@ -84,13 +91,16 @@ def _validate_publications(value: str) -> None:
     for token in tokens:
         if not (pmid_re.match(token) or doi_re.match(token)):
             raise ValidationError(
-                _(f"'{token}' is not a valid PMID (digits only) or DOI (starts with 10.xxxx/).")
+                _(
+                    f"'{token}' is not a valid PMID (digits only) or DOI (starts with 10.xxxx/)."
+                )
             )
 
 
 # ---------------------------------------------------------------------------
 # ServiceSubmission
 # ---------------------------------------------------------------------------
+
 
 class SubmissionStatus(models.TextChoices):
     DRAFT = "draft", _("Draft")
@@ -181,6 +191,7 @@ class ServiceSubmission(models.Model):
         if self.submitter_affiliation:
             parts.append(self.submitter_affiliation)
         return ", ".join(parts)
+
     register_as_elixir = models.BooleanField(
         default=False,
         help_text="Whether to also register this service as an ELIXIR-DE service.",
@@ -413,8 +424,11 @@ class ServiceSubmission(models.Model):
 
         # Year range check
         from django.utils import timezone as tz
+
         current_year = tz.now().year
-        if self.year_established and not (1900 <= self.year_established <= current_year):
+        if self.year_established and not (
+            1900 <= self.year_established <= current_year
+        ):
             errors["year_established"] = _(
                 f"Year must be between 1900 and {current_year}."
             )
@@ -431,11 +445,20 @@ class ServiceSubmission(models.Model):
     def save(self, *args, **kwargs) -> None:
         """Sanitise free-text fields before saving."""
         text_fields = [
-            "submitter_first_name", "submitter_last_name", "submitter_affiliation",
-            "service_name", "service_description",
-            "toolbox_name", "user_knowledge_required", "host_institute",
-            "internal_contact_name", "associated_partner_note",
-            "kpi_start_year", "keywords_uncited", "keywords_seo", "comments",
+            "submitter_first_name",
+            "submitter_last_name",
+            "submitter_affiliation",
+            "service_name",
+            "service_description",
+            "toolbox_name",
+            "user_knowledge_required",
+            "host_institute",
+            "internal_contact_name",
+            "associated_partner_note",
+            "kpi_start_year",
+            "keywords_uncited",
+            "keywords_seo",
+            "comments",
         ]
         for field in text_fields:
             value = getattr(self, field, "")
@@ -447,6 +470,7 @@ class ServiceSubmission(models.Model):
 # ---------------------------------------------------------------------------
 # SubmissionAPIKey
 # ---------------------------------------------------------------------------
+
 
 def _generate_key() -> str:
     """
@@ -515,7 +539,7 @@ class SubmissionAPIKey(models.Model):
     SCOPE_READ = "read"
     SCOPE_WRITE = "write"
     SCOPE_CHOICES = [
-        (SCOPE_READ,  "Read-only  (GET retrieve only)"),
+        (SCOPE_READ, "Read-only  (GET retrieve only)"),
         (SCOPE_WRITE, "Read-write (GET retrieve + PATCH update)"),
     ]
 

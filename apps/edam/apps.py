@@ -10,6 +10,7 @@ class EdamConfig(AppConfig):
 
     def ready(self):
         from django.db.models.signals import post_migrate
+
         post_migrate.connect(_auto_seed_edam, sender=self)
 
 
@@ -29,6 +30,7 @@ def _auto_seed_edam(sender, **kwargs):
 
     try:
         from apps.edam.models import EdamTerm
+
         if EdamTerm.objects.exists():
             return  # Already seeded — nothing to do
 
@@ -38,6 +40,7 @@ def _auto_seed_edam(sender, **kwargs):
             "[edam] To skip, set EDAM_OWL_URL to a local file path in .env.\n"
         )
         from apps.edam.sync import run_sync
+
         result = run_sync(log=lambda msg: print(f"[edam] {msg}"))
         print(
             f"[edam] Auto-seed complete — {result['total']} terms loaded "

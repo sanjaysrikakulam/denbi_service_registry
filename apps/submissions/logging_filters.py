@@ -4,6 +4,7 @@ Logging Filters
 ScrubSensitiveFilter strips Authorization header values and cookie strings
 from log records to prevent API keys and session tokens from appearing in logs.
 """
+
 import logging
 import re
 
@@ -28,8 +29,7 @@ class ScrubSensitiveFilter(logging.Filter):
         if record.args:
             if isinstance(record.args, tuple):
                 record.args = tuple(
-                    self._scrub(a) if isinstance(a, str) else a
-                    for a in record.args
+                    self._scrub(a) if isinstance(a, str) else a for a in record.args
                 )
             elif isinstance(record.args, dict):
                 record.args = {

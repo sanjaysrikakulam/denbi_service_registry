@@ -4,6 +4,7 @@ Custom Middleware
 RequestIDMiddleware: Injects a UUID per request, included in all log records
 and error responses so support staff can correlate logs to issues.
 """
+
 import uuid
 import logging
 

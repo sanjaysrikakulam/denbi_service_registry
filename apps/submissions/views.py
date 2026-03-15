@@ -10,6 +10,7 @@ Views:
   - SuccessView    : Shows confirmation with one-time API key display
   - validate_field : HTMX endpoint for per-field inline validation
 """
+
 import logging
 
 from django.conf import settings
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _get_client_ip(request: HttpRequest) -> str:
     """
@@ -52,6 +54,7 @@ def _get_client_ip(request: HttpRequest) -> str:
 def _hash_user_agent(request: HttpRequest) -> str:
     """Return SHA-256 of the User-Agent header for abuse pattern detection."""
     import hashlib
+
     ua = request.META.get("HTTP_USER_AGENT", "")
     return hashlib.sha256(ua.encode("utf-8")).hexdigest()
 
@@ -59,6 +62,7 @@ def _hash_user_agent(request: HttpRequest) -> str:
 # ---------------------------------------------------------------------------
 # RegisterView — new submission
 # ---------------------------------------------------------------------------
+
 
 @method_decorator(
     ratelimit(key="ip", rate=settings.RATE_LIMIT_SUBMIT, method="POST", block=True),
@@ -123,6 +127,7 @@ class RegisterView(View):
 # SuccessView — one-time API key display
 # ---------------------------------------------------------------------------
 
+
 class SuccessView(View):
     """
     GET /register/success/
@@ -141,15 +146,20 @@ class SuccessView(View):
             # User navigated here directly without submitting — redirect to form
             return redirect("submissions:register")
 
-        return render(request, self.template_name, {
-            "api_key": api_key,
-            "submission_id": submission_id,
-        })
+        return render(
+            request,
+            self.template_name,
+            {
+                "api_key": api_key,
+                "submission_id": submission_id,
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
 # UpdateView — enter API key to retrieve submission for editing
 # ---------------------------------------------------------------------------
+
 
 @method_decorator(
     ratelimit(key="ip", rate=settings.RATE_LIMIT_UPDATE, method="POST", block=True),
@@ -192,6 +202,7 @@ class UpdateView(View):
 # EditView — edit an existing submission (authenticated via session)
 # ---------------------------------------------------------------------------
 
+
 class EditView(View):
     """
     GET  /update/edit/  — Show the pre-populated edit form.
@@ -219,28 +230,41 @@ class EditView(View):
     def get(self, request: HttpRequest) -> HttpResponse:
         submission = self._get_submission(request)
         if not submission:
-            messages.error(request, "Your session has expired. Please enter your API key again.")
+            messages.error(
+                request, "Your session has expired. Please enter your API key again."
+            )
             return redirect("submissions:update")
 
         form = SubmissionForm(instance=submission)
-        return render(request, self.template_name, {
-            "form": form,
-            "submission": submission,
-        })
+        return render(
+            request,
+            self.template_name,
+            {
+                "form": form,
+                "submission": submission,
+            },
+        )
 
     def post(self, request: HttpRequest) -> HttpResponse:
         submission = self._get_submission(request)
         if not submission:
-            messages.error(request, "Your session has expired. Please enter your API key again.")
+            messages.error(
+                request, "Your session has expired. Please enter your API key again."
+            )
             return redirect("submissions:update")
 
         form = SubmissionForm(request.POST, instance=submission)
 
         if not form.is_valid():
-            return render(request, self.template_name, {
-                "form": form,
-                "submission": submission,
-            }, status=422)
+            return render(
+                request,
+                self.template_name,
+                {
+                    "form": form,
+                    "submission": submission,
+                },
+                status=422,
+            )
 
         updated = form.save(commit=False)
 
@@ -253,8 +277,7 @@ class EditView(View):
 
         logger.info(
             "Submission updated",
-            extra={
-                "submission_id": str(submission.id)},
+            extra={"submission_id": str(submission.id)},
         )
 
         # Send async notification
@@ -264,13 +287,16 @@ class EditView(View):
         request.session.pop("edit_key_id", None)
         request.session.pop("edit_submission_id", None)
 
-        messages.success(request, "Your service registration has been updated successfully.")
+        messages.success(
+            request, "Your service registration has been updated successfully."
+        )
         return redirect("submissions:update_success")
 
 
 # ---------------------------------------------------------------------------
 # HTMX inline field validation
 # ---------------------------------------------------------------------------
+
 
 def validate_field(request: HttpRequest) -> HttpResponse:
     """
@@ -296,14 +322,19 @@ def validate_field(request: HttpRequest) -> HttpResponse:
         return HttpResponse(status=400)
 
     bound_field = form[field_name]
-    return render(request, "submissions/partials/field_validation.html", {
-        "field": bound_field,
-    })
+    return render(
+        request,
+        "submissions/partials/field_validation.html",
+        {
+            "field": bound_field,
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
 # Simple informational views
 # ---------------------------------------------------------------------------
+
 
 def update_success(request: HttpRequest) -> HttpResponse:
     return render(request, "submissions/update_success.html")

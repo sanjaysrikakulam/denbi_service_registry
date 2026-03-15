@@ -16,6 +16,7 @@ Usage:
     # Dry-run: show what would be synced without making API calls
     python manage.py sync_biotools --dry-run
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 
@@ -75,7 +76,9 @@ class Command(BaseCommand):
             )
             if result.ok:
                 action = "Created" if result.created else "Updated"
-                self.stdout.write(self.style.SUCCESS(f"{action} record for {biotools_id}"))
+                self.stdout.write(
+                    self.style.SUCCESS(f"{action} record for {biotools_id}")
+                )
             else:
                 self.stderr.write(self.style.ERROR(f"Sync failed: {result.error}"))
             return
@@ -85,13 +88,17 @@ class Command(BaseCommand):
         total = records.count()
 
         if total == 0:
-            self.stdout.write("No BioToolsRecord rows found. Use --submission <uuid> --create to add one.")
+            self.stdout.write(
+                "No BioToolsRecord rows found. Use --submission <uuid> --create to add one."
+            )
             return
 
         if dry_run:
             self.stdout.write(f"[DRY RUN] Would sync {total} record(s):")
             for r in records:
-                self.stdout.write(f"  {r.submission.service_name} → bio.tools:{r.biotools_id}")
+                self.stdout.write(
+                    f"  {r.submission.service_name} → bio.tools:{r.biotools_id}"
+                )
             return
 
         self.stdout.write(f"Syncing {total} bio.tools record(s)...")

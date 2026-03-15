@@ -12,11 +12,11 @@ Usage:
     sub = ServiceSubmissionFactory(service_name="Galaxy") # override a field
     key, plaintext = APIKeyFactory.create_with_plaintext(submission=sub)
 """
+
 import secrets
 from datetime import date
 
 import factory
-from django.utils import timezone
 from factory.django import DjangoModelFactory
 
 from apps.registry.models import PrincipalInvestigator, ServiceCategory, ServiceCenter
@@ -26,6 +26,7 @@ from apps.submissions.models import ServiceSubmission, SubmissionAPIKey, _hash_k
 # ---------------------------------------------------------------------------
 # Registry factories
 # ---------------------------------------------------------------------------
+
 
 class ServiceCategoryFactory(DjangoModelFactory):
     class Meta:
@@ -62,6 +63,7 @@ class PIFactory(DjangoModelFactory):
 
 class AssociatedPartnerPIFactory(PIFactory):
     """The special 'Associated partner' PI entry."""
+
     last_name = "Associated partner"
     first_name = "[please state below]"
     is_associated_partner = True
@@ -70,6 +72,7 @@ class AssociatedPartnerPIFactory(PIFactory):
 # ---------------------------------------------------------------------------
 # ServiceSubmission factory
 # ---------------------------------------------------------------------------
+
 
 class ServiceSubmissionFactory(DjangoModelFactory):
     class Meta:
@@ -86,7 +89,8 @@ class ServiceSubmissionFactory(DjangoModelFactory):
     # Section B
     service_name = factory.Sequence(lambda n: f"Test Service {n}")
     service_description = factory.LazyFunction(
-        lambda: "This is a detailed test service description that exceeds the minimum length requirement. " * 2
+        lambda: "This is a detailed test service description that exceeds the minimum length requirement. "
+        * 2
     )
     year_established = 2020
     is_toolbox = False
@@ -152,6 +156,7 @@ class ServiceSubmissionFactory(DjangoModelFactory):
 # ---------------------------------------------------------------------------
 # SubmissionAPIKey factory
 # ---------------------------------------------------------------------------
+
 
 class APIKeyFactory(DjangoModelFactory):
     class Meta:

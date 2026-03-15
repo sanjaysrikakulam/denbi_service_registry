@@ -13,6 +13,7 @@ Usage:
 Default URL (configurable via EDAM_OWL_URL env var or [edam] owl_url in site.toml):
     https://edamontology.org/EDAM_stable.owl
 """
+
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.edam.sync import BRANCH_MAP, run_sync, _default_url
@@ -57,7 +58,9 @@ class Command(BaseCommand):
             raise CommandError(str(exc)) from exc
 
         if not options["dry_run"]:
-            self.stdout.write(self.style.SUCCESS(
-                f"EDAM sync complete. Created: {result['created']}, "
-                f"Updated: {result['updated']}, Total: {result['total']}"
-            ))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"EDAM sync complete. Created: {result['created']}, "
+                    f"Updated: {result['updated']}, Total: {result['total']}"
+                )
+            )

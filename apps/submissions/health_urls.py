@@ -9,6 +9,7 @@ Two endpoints used by Docker health checks and load balancers:
   GET /health/ready/  — Returns 200 only if DB and Redis are reachable.
                         Used by orchestrators before routing traffic.
 """
+
 import logging
 
 from django.db import connection, OperationalError
@@ -38,6 +39,7 @@ def readiness(request):
     # Redis check
     try:
         from django.core.cache import cache
+
         cache.set("_health_check", "1", timeout=5)
         val = cache.get("_health_check")
         checks["redis"] = "ok" if val == "1" else "error"
@@ -48,7 +50,9 @@ def readiness(request):
     all_ok = all(v == "ok" for v in checks.values())
     status = 200 if all_ok else 503
 
-    return JsonResponse({"status": "ok" if all_ok else "degraded", "checks": checks}, status=status)
+    return JsonResponse(
+        {"status": "ok" if all_ok else "degraded", "checks": checks}, status=status
+    )
 
 
 urlpatterns = [

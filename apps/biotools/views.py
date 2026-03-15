@@ -14,6 +14,7 @@ Flow:
 The prefill is always non-destructive: fields are only suggested, never
 overwritten silently. The user must confirm before applying.
 """
+
 import logging
 
 from django.http import JsonResponse
@@ -66,24 +67,32 @@ def biotools_prefill(request):
     """
     biotools_id = request.GET.get("id", "").strip().lower()
     if not biotools_id:
-        return JsonResponse({"found": False, "error": "No bio.tools ID provided."}, status=400)
+        return JsonResponse(
+            {"found": False, "error": "No bio.tools ID provided."}, status=400
+        )
 
     # Strip full URL if the user pasted the URL instead of just the ID
     if biotools_id.startswith("https://bio.tools/"):
-        biotools_id = biotools_id[len("https://bio.tools/"):].rstrip("/")
+        biotools_id = biotools_id[len("https://bio.tools/") :].rstrip("/")
 
     client = BioToolsClient(timeout=8)
     try:
         tool = client.get_tool(biotools_id)
     except BioToolsNotFound:
         return JsonResponse(
-            {"found": False, "error": f"No tool with ID '{biotools_id}' found in bio.tools."},
+            {
+                "found": False,
+                "error": f"No tool with ID '{biotools_id}' found in bio.tools.",
+            },
             status=404,
         )
     except BioToolsError as exc:
         logger.warning("bio.tools prefill error for '%s': %s", biotools_id, exc)
         return JsonResponse(
-            {"found": False, "error": "bio.tools is temporarily unavailable. Please fill in manually."},
+            {
+                "found": False,
+                "error": "bio.tools is temporarily unavailable. Please fill in manually.",
+            },
             status=503,
         )
 
@@ -121,24 +130,26 @@ def biotools_prefill(request):
                 source_url = dl["url"]
                 break
 
-    return JsonResponse({
-        "found": True,
-        "biotools_id": tool.biotools_id,
-        "name": tool.name,
-        "description": tool.description[:2000],
-        "homepage": tool.homepage,
-        "license": tool.license,
-        "publications": publications_str,
-        "edam_topics": tool.edam_topics,
-        "edam_operations": edam_operations,
-        "tool_types": tool.tool_type,
-        "github_url": github_url or source_url,
-        "version": tool.version[0] if tool.version else "",
-        "message": (
-            "Metadata found in bio.tools. "
-            "Fields below have been pre-filled — please review and adjust before submitting."
-        ),
-    })
+    return JsonResponse(
+        {
+            "found": True,
+            "biotools_id": tool.biotools_id,
+            "name": tool.name,
+            "description": tool.description[:2000],
+            "homepage": tool.homepage,
+            "license": tool.license,
+            "publications": publications_str,
+            "edam_topics": tool.edam_topics,
+            "edam_operations": edam_operations,
+            "tool_types": tool.tool_type,
+            "github_url": github_url or source_url,
+            "version": tool.version[0] if tool.version else "",
+            "message": (
+                "Metadata found in bio.tools. "
+                "Fields below have been pre-filled — please review and adjust before submitting."
+            ),
+        }
+    )
 
 
 @require_GET
@@ -167,14 +178,18 @@ def biotools_search(request):
     except BioToolsError:
         return JsonResponse({"results": []})
 
-    return JsonResponse({
-        "results": [
-            {
-                "biotools_id": t.biotools_id,
-                "name": t.name,
-                "description": (t.description[:150] + "…") if len(t.description) > 150 else t.description,
-                "homepage": t.homepage,
-            }
-            for t in tools
-        ]
-    })
+    return JsonResponse(
+        {
+            "results": [
+                {
+                    "biotools_id": t.biotools_id,
+                    "name": t.name,
+                    "description": (t.description[:150] + "…")
+                    if len(t.description) > 150
+                    else t.description,
+                    "homepage": t.homepage,
+                }
+                for t in tools
+            ]
+        }
+    )

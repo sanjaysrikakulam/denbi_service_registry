@@ -16,6 +16,7 @@ Why Tom Select instead of plain <select>?
 The widget groups options by branch for clarity when the user opens the
 full option list without typing.
 """
+
 from django import forms
 
 
@@ -37,7 +38,9 @@ class EdamAutocompleteWidget(forms.SelectMultiple):
         data-placeholder: Placeholder text shown when nothing is selected.
     """
 
-    def __init__(self, attrs=None, branch: str = "", placeholder: str = "Search EDAM terms…"):
+    def __init__(
+        self, attrs=None, branch: str = "", placeholder: str = "Search EDAM terms…"
+    ):
         default_attrs = {
             "class": "edam-autocomplete",
             "data-branch": branch,

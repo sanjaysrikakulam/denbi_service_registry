@@ -5,6 +5,7 @@ Connects Django's post_save signal on ServiceSubmission to the Celery
 sync task so that adding or changing a bio.tools URL automatically
 triggers a background refresh.
 """
+
 import logging
 
 from django.db.models.signals import post_save
@@ -21,7 +22,12 @@ def connect_signals():
     """
     from apps.submissions.models import ServiceSubmission
 
-    @receiver(post_save, sender=ServiceSubmission, dispatch_uid="biotools_sync_on_save", weak=False)
+    @receiver(
+        post_save,
+        sender=ServiceSubmission,
+        dispatch_uid="biotools_sync_on_save",
+        weak=False,
+    )
     def trigger_biotools_sync(sender, instance, created, **kwargs):
         """
         When a ServiceSubmission is saved with a bio.tools URL, kick off
@@ -46,6 +52,7 @@ def connect_signals():
                 if previous.biotools_url == instance.biotools_url:
                     # URL hasn't changed — check if we already have a record
                     from apps.biotools.models import BioToolsRecord
+
                     if BioToolsRecord.objects.filter(submission=instance).exists():
                         return  # Already synced, URL unchanged — skip
             except sender.DoesNotExist:
@@ -53,7 +60,8 @@ def connect_signals():
 
         logger.info(
             "Scheduling bio.tools sync for submission %s (url: %s)",
-            instance.pk, instance.biotools_url,
+            instance.pk,
+            instance.biotools_url,
         )
         # Delay by 2 seconds so the transaction commits before the task reads the DB
         sync_biotools_record.apply_async(

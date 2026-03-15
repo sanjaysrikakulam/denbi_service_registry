@@ -1,4 +1,5 @@
 """Celery tasks for EDAM ontology sync."""
+
 import logging
 
 from celery import shared_task

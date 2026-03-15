@@ -5,6 +5,7 @@ Tests for the submission form views: register, update, edit, success, health.
 
 Uses Django's test client — no network calls.
 """
+
 import pytest
 from django.test import Client
 from django.urls import reverse
@@ -21,9 +22,9 @@ def client():
 # Home and static views
 # ===========================================================================
 
+
 @pytest.mark.django_db
 class TestHomeView:
-
     def test_home_returns_200(self, client):
         resp = client.get("/")
         assert resp.status_code == 200
@@ -33,18 +34,24 @@ class TestHomeView:
 # RegisterView
 # ===========================================================================
 
+
 @pytest.mark.django_db
 class TestRegisterView:
-
     def test_get_register_returns_200(self, client):
         resp = client.get(reverse("submissions:register"))
         assert resp.status_code == 200
 
     def test_get_register_contains_form_sections(self, client):
         resp = client.get(reverse("submissions:register"))
-        content = resp.content.decode()
-        for section in ["Section A", "Section B", "Section C",
-                        "Section D", "Section E", "Section F", "Section G"]:
+        for section in [
+            "Section A",
+            "Section B",
+            "Section C",
+            "Section D",
+            "Section E",
+            "Section F",
+            "Section G",
+        ]:
             # Sections are labelled A–G but text varies; check for card headers
             pass  # template assertions kept loose to avoid brittle coupling
         assert b"csrf" in resp.content.lower() or b"csrfmiddlewaretoken" in resp.content
@@ -54,7 +61,11 @@ class TestRegisterView:
         assert resp.status_code == 422
 
     def test_post_valid_creates_submission_and_redirects(self, client):
-        from tests.factories import PIFactory, ServiceCategoryFactory, ServiceCenterFactory
+        from tests.factories import (
+            PIFactory,
+            ServiceCategoryFactory,
+            ServiceCenterFactory,
+        )
         from django.utils import timezone
 
         cat = ServiceCategoryFactory()
@@ -137,15 +148,18 @@ class TestRegisterView:
 # UpdateView
 # ===========================================================================
 
+
 @pytest.mark.django_db
 class TestUpdateView:
-
     def test_get_update_returns_200(self, client):
         resp = client.get(reverse("submissions:update"))
         assert resp.status_code == 200
 
     def test_invalid_key_returns_403(self, client):
-        resp = client.post(reverse("submissions:update"), {"api_key": "wrong-key-value-that-is-long-enough"})
+        resp = client.post(
+            reverse("submissions:update"),
+            {"api_key": "wrong-key-value-that-is-long-enough"},
+        )
         assert resp.status_code == 403
 
     def test_valid_key_redirects_to_edit(self, client):
@@ -169,9 +183,9 @@ class TestUpdateView:
 # EditView
 # ===========================================================================
 
+
 @pytest.mark.django_db
 class TestEditView:
-
     def test_edit_without_session_redirects(self, client):
         """Accessing edit without a valid session key should redirect to update."""
         resp = client.get(reverse("submissions:edit"))
@@ -194,9 +208,9 @@ class TestEditView:
 # Health endpoints
 # ===========================================================================
 
+
 @pytest.mark.django_db
 class TestHealthEndpoints:
-
     def test_liveness_returns_200(self, client):
         resp = client.get("/health/live/")
         assert resp.status_code == 200

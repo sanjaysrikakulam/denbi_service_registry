@@ -11,6 +11,7 @@ Data migration strategy:
 The old submitter_name field is removed. A @property on the model provides
 backwards-compatible read access for any code still using .submitter_name.
 """
+
 from django.db import migrations, models
 
 
@@ -37,7 +38,13 @@ def split_name_forward(apps, schema_editor):
         sub.submitter_first_name = first
         sub.submitter_last_name = last
         sub.submitter_affiliation = affiliation
-        sub.save(update_fields=["submitter_first_name", "submitter_last_name", "submitter_affiliation"])
+        sub.save(
+            update_fields=[
+                "submitter_first_name",
+                "submitter_last_name",
+                "submitter_affiliation",
+            ]
+        )
 
 
 def split_name_reverse(apps, schema_editor):
@@ -55,7 +62,6 @@ def split_name_reverse(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("submissions", "0002_submissionapikey_scope"),
     ]

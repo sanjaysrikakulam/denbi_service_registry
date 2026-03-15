@@ -9,6 +9,7 @@ Tasks:
   - send_update_notification     : Email admin when a submitter edits a submission
   - cleanup_stale_drafts         : Periodic task to remove expired draft sessions
 """
+
 import logging
 from datetime import timedelta
 
@@ -27,7 +28,9 @@ logger = logging.getLogger(__name__)
     default_retry_delay=60,  # Retry after 60 seconds
     autoretry_for=(Exception,),
 )
-def send_submission_notification(self, submission_id: str, event: str = "created") -> None:
+def send_submission_notification(
+    self, submission_id: str, event: str = "created"
+) -> None:
     """
     Send an email notification to the internal contact for a submission.
 
@@ -44,18 +47,22 @@ def send_submission_notification(self, submission_id: str, event: str = "created
     from apps.submissions.models import ServiceSubmission
 
     try:
-        submission = ServiceSubmission.objects.select_related(
-            "service_center"
-        ).prefetch_related(
-            "service_categories", "responsible_pis"
-        ).get(id=submission_id)
+        submission = (
+            ServiceSubmission.objects.select_related("service_center")
+            .prefetch_related("service_categories", "responsible_pis")
+            .get(id=submission_id)
+        )
     except ServiceSubmission.DoesNotExist:
-        logger.error(f"send_submission_notification: submission {submission_id} not found")
+        logger.error(
+            f"send_submission_notification: submission {submission_id} not found"
+        )
         return
 
     # Primary recipient: admin contact from site.toml (the registry coordinators)
     # CC the submitter's internal contact email so they also receive a copy
-    admin_email = getattr(settings, "SITE_CONFIG", {}).get("contact", {}).get("email", "")
+    admin_email = (
+        getattr(settings, "SITE_CONFIG", {}).get("contact", {}).get("email", "")
+    )
     override = getattr(settings, "SUBMISSION_NOTIFY_OVERRIDE", "")
     recipient = override or admin_email or settings.DEFAULT_FROM_EMAIL
 
@@ -73,12 +80,16 @@ def send_submission_notification(self, submission_id: str, event: str = "created
             f"{submission.service_name}"
         ),
     }
-    subject = subject_map.get(event, f"[de.NBI Registry] Update: {submission.service_name}")
+    subject = subject_map.get(
+        event, f"[de.NBI Registry] Update: {submission.service_name}"
+    )
 
     context = {
         "submission": submission,
         "event": event,
-        "categories": list(submission.service_categories.values_list("name", flat=True)),
+        "categories": list(
+            submission.service_categories.values_list("name", flat=True)
+        ),
         "pis": list(submission.responsible_pis.all()),
     }
 
@@ -130,8 +141,12 @@ def _send_submitter_status_email(submission) -> None:
         f"— {submission.service_name}"
     )
     context = {"submission": submission}
-    text_body = render_to_string("submissions/email/status_update_submitter.txt", context)
-    html_body = render_to_string("submissions/email/status_update_submitter.html", context)
+    text_body = render_to_string(
+        "submissions/email/status_update_submitter.txt", context
+    )
+    html_body = render_to_string(
+        "submissions/email/status_update_submitter.html", context
+    )
 
     msg = EmailMultiAlternatives(
         subject=subject,
@@ -143,9 +158,13 @@ def _send_submitter_status_email(submission) -> None:
     msg.attach_alternative(html_body, "text/html")
     try:
         msg.send(fail_silently=False)
-        logger.info(f"Submitter status email sent for submission {submission.id} to {recipient}")
+        logger.info(
+            f"Submitter status email sent for submission {submission.id} to {recipient}"
+        )
     except Exception as exc:
-        logger.error(f"Failed to send submitter status email for {submission.id}: {exc}")
+        logger.error(
+            f"Failed to send submitter status email for {submission.id}: {exc}"
+        )
 
 
 @shared_task(

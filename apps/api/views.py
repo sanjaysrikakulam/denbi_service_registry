@@ -14,6 +14,7 @@ Authentication strategy
 `self.action` is set, so we inspect `self.request.method` and
 `self.kwargs` (router-populated) instead.
 """
+
 import logging
 
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -44,6 +45,7 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _is_detail_action(view):
     """
     Return True when the request targets a specific object (has a pk/uuid
@@ -55,6 +57,7 @@ def _is_detail_action(view):
 # ---------------------------------------------------------------------------
 # SubmissionViewSet
 # ---------------------------------------------------------------------------
+
 
 @extend_schema(tags=["Submissions"])
 class SubmissionViewSet(
@@ -83,11 +86,11 @@ class SubmissionViewSet(
     ```
     """
 
-    queryset = ServiceSubmission.objects.select_related(
-        "service_center"
-    ).prefetch_related(
-        "service_categories", "responsible_pis"
-    ).order_by("-submitted_at")
+    queryset = (
+        ServiceSubmission.objects.select_related("service_center")
+        .prefetch_related("service_categories", "responsible_pis")
+        .order_by("-submitted_at")
+    )
 
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["submitted_at", "updated_at", "service_name"]
@@ -102,8 +105,9 @@ class SubmissionViewSet(
         - GET list      → admin Token
         - GET/PATCH detail → ApiKey (owner) or Token (admin)
         """
-        method = getattr(self, "request", None)
-        http_method = (self.request.method if hasattr(self, "request") and self.request else "GET")
+        http_method = (
+            self.request.method if hasattr(self, "request") and self.request else "GET"
+        )
 
         # Creation is open — no auth needed
         if http_method == "POST" and not _is_detail_action(self):
@@ -118,7 +122,11 @@ class SubmissionViewSet(
         on some Django/DRF paths, so guard with getattr.
         """
         action = getattr(self, "action", None)
-        method = getattr(self.request, "method", "GET") if hasattr(self, "request") else "GET"
+        method = (
+            getattr(self.request, "method", "GET")
+            if hasattr(self, "request")
+            else "GET"
+        )
 
         if action == "create" or (method == "POST" and not _is_detail_action(self)):
             return [AllowAny()]
@@ -235,9 +243,17 @@ class SubmissionViewSet(
         ),
         parameters=[
             OpenApiParameter("status", str, description="Filter by status"),
-            OpenApiParameter("service_center", str, description="Filter by service centre short name"),
-            OpenApiParameter("year_established", int, description="Filter by year established"),
-            OpenApiParameter("register_as_elixir", str, description="Filter by ELIXIR registration (true/false)"),
+            OpenApiParameter(
+                "service_center", str, description="Filter by service centre short name"
+            ),
+            OpenApiParameter(
+                "year_established", int, description="Filter by year established"
+            ),
+            OpenApiParameter(
+                "register_as_elixir",
+                str,
+                description="Filter by ELIXIR registration (true/false)",
+            ),
         ],
         responses={200: SubmissionListSerializer(many=True)},
     )
@@ -272,7 +288,9 @@ class SubmissionViewSet(
         """Full PUT is disabled — use PATCH."""
         if not kwargs.get("partial"):
             return Response(
-                {"detail": "Full replacement (PUT) is not supported. Use PATCH for partial updates."},
+                {
+                    "detail": "Full replacement (PUT) is not supported. Use PATCH for partial updates."
+                },
                 status=status.HTTP_405_METHOD_NOT_ALLOWED,
             )
         return super().update(request, *args, **kwargs)
@@ -289,9 +307,11 @@ class SubmissionViewSet(
 # Reference data viewsets (admin-only, read-only)
 # ---------------------------------------------------------------------------
 
+
 @extend_schema(tags=["Reference Data"])
 class ServiceCategoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """List active service categories. Requires admin token."""
+
     queryset = ServiceCategory.objects.filter(is_active=True)
     serializer_class = ServiceCategorySerializer
     permission_classes = [IsAdminTokenUser]
@@ -302,6 +322,7 @@ class ServiceCategoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 @extend_schema(tags=["Reference Data"])
 class ServiceCenterViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """List active de.NBI service centres. Requires admin token."""
+
     queryset = ServiceCenter.objects.filter(is_active=True)
     serializer_class = ServiceCenterSerializer
     permission_classes = [IsAdminTokenUser]
@@ -312,7 +333,10 @@ class ServiceCenterViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 @extend_schema(tags=["Reference Data"])
 class PrincipalInvestigatorViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """List active PIs in the de.NBI network. Requires admin token."""
-    queryset = PrincipalInvestigator.objects.filter(is_active=True).order_by("last_name")
+
+    queryset = PrincipalInvestigator.objects.filter(is_active=True).order_by(
+        "last_name"
+    )
     serializer_class = PrincipalInvestigatorSerializer
     permission_classes = [IsAdminTokenUser]
     authentication_classes = [TokenAuthentication]
@@ -323,8 +347,11 @@ class PrincipalInvestigatorViewSet(mixins.ListModelMixin, viewsets.GenericViewSe
 # EDAM ViewSet
 # ---------------------------------------------------------------------------
 
+
 @extend_schema(tags=["EDAM Ontology"])
-class EdamTermViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+class EdamTermViewSet(
+    mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
+):
     """
     EDAM ontology terms — public, no authentication required.
 
@@ -332,6 +359,7 @@ class EdamTermViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
     - `?branch=topic|operation|data|format`
     - `?q=<search term>` — searches label and definition
     """
+
     from apps.edam.models import EdamTerm
     from apps.api.serializers import EdamTermSerializer, EdamTermDetailSerializer
 
@@ -342,6 +370,7 @@ class EdamTermViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
 
     def get_serializer_class(self):
         from apps.api.serializers import EdamTermSerializer, EdamTermDetailSerializer
+
         if getattr(self, "action", None) == "retrieve":
             return EdamTermDetailSerializer
         return EdamTermSerializer
@@ -349,6 +378,7 @@ class EdamTermViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
     def get_queryset(self):
         from apps.edam.models import EdamTerm
         from django.db.models import Q
+
         qs = EdamTerm.objects.filter(is_obsolete=False).select_related("parent")
         branch = self.request.query_params.get("branch")
         if branch:
@@ -360,6 +390,7 @@ class EdamTermViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
 
     def get_object(self):
         from apps.edam.models import EdamTerm
+
         lookup = self.kwargs.get(self.lookup_field)
         try:
             return EdamTerm.objects.get(accession=lookup)
@@ -370,6 +401,7 @@ class EdamTermViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets
 # ---------------------------------------------------------------------------
 # bio.tools ViewSet
 # ---------------------------------------------------------------------------
+
 
 @extend_schema(tags=["bio.tools Integration"])
 class BioToolsRecordViewSet(
@@ -386,12 +418,17 @@ class BioToolsRecordViewSet(
 
     **Filters:** `?submission=<uuid>`, `?biotools_id=<id>`
     """
+
     from apps.api.serializers import BioToolsRecordSerializer
+
     serializer_class = BioToolsRecordSerializer
 
     def get_queryset(self):
         from apps.biotools.models import BioToolsRecord
-        qs = BioToolsRecord.objects.select_related("submission").prefetch_related("functions")
+
+        qs = BioToolsRecord.objects.select_related("submission").prefetch_related(
+            "functions"
+        )
         biotools_id = self.request.query_params.get("biotools_id")
         if biotools_id:
             qs = qs.filter(biotools_id=biotools_id)
@@ -410,10 +447,13 @@ class BioToolsRecordViewSet(
 
     def get_object(self):
         from apps.biotools.models import BioToolsRecord
+
         lookup = self.kwargs.get(self.lookup_field)
         try:
-            return BioToolsRecord.objects.select_related("submission").prefetch_related("functions").get(
-                biotools_id=lookup
+            return (
+                BioToolsRecord.objects.select_related("submission")
+                .prefetch_related("functions")
+                .get(biotools_id=lookup)
             )
         except BioToolsRecord.DoesNotExist:
             return super().get_object()

@@ -3,6 +3,7 @@ Custom template tags for de.NBI Service Registry.
 Provides access to site configuration values in templates that don't
 receive the submissions context processor (e.g. admin templates).
 """
+
 from pathlib import Path
 
 from django import template

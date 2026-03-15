@@ -11,6 +11,7 @@ Tasks:
       Periodic task (Celery beat, daily) that refreshes ALL linked records.
       Runs at 03:00 Europe/Berlin to avoid overlap with EDAM sync.
 """
+
 import logging
 
 from celery import shared_task
@@ -54,7 +55,9 @@ def sync_biotools_record(self, submission_id: str) -> dict:
     if not biotools_id:
         return {"ok": False, "error": "Could not extract bio.tools ID from URL"}
 
-    logger.info("Syncing bio.tools record: %s for submission %s", biotools_id, submission_id)
+    logger.info(
+        "Syncing bio.tools record: %s for submission %s", biotools_id, submission_id
+    )
     result = sync_tool(biotools_id=biotools_id, submission_id=submission_id)
     return result._asdict()
 
@@ -96,5 +99,7 @@ def sync_all_biotools_records() -> None:
 
     logger.info(
         "bio.tools bulk sync complete. OK: %d / %d, Errors: %d",
-        ok_count, total, err_count,
+        ok_count,
+        total,
+        err_count,
     )

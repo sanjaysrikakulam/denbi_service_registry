@@ -15,6 +15,7 @@ Key endpoints used:
 The client uses only the standard library (urllib) to avoid adding
 a hard dependency on `requests` for this single use case.
 """
+
 import json
 import logging
 import urllib.error
@@ -37,16 +38,17 @@ class BioToolsToolEntry:
     All fields map directly to the bio.tools JSON schema.
     See: https://biotoolsschema.readthedocs.io/
     """
-    biotools_id: str                   # biotoolsID
-    name: str                          # name
-    description: str                   # description
-    homepage: str                      # homepage
-    version: list[str] = field(default_factory=list)        # version
-    tool_type: list[str] = field(default_factory=list)      # toolType
+
+    biotools_id: str  # biotoolsID
+    name: str  # name
+    description: str  # description
+    homepage: str  # homepage
+    version: list[str] = field(default_factory=list)  # version
+    tool_type: list[str] = field(default_factory=list)  # toolType
     operating_system: list[str] = field(default_factory=list)  # operatingSystem
-    license: str = ""                  # license (SPDX)
-    maturity: str = ""                 # maturity
-    cost: str = ""                     # cost
+    license: str = ""  # license (SPDX)
+    maturity: str = ""  # maturity
+    cost: str = ""  # cost
     # Topics: list of {uri, term}
     edam_topics: list[dict] = field(default_factory=list)
     # Function blocks (operations + inputs + outputs)
@@ -65,6 +67,7 @@ class BioToolsToolEntry:
 
 class BioToolsError(Exception):
     """Raised when the bio.tools API returns an error or unexpected response."""
+
     def __init__(self, message: str, status_code: int = 0):
         super().__init__(message)
         self.status_code = status_code
@@ -118,7 +121,8 @@ class BioToolsClient:
                     f"bio.tools tool not found (HTTP 404): {url}", status_code=404
                 )
             raise BioToolsError(
-                f"bio.tools API error (HTTP {exc.code}): {exc.reason}", status_code=exc.code
+                f"bio.tools API error (HTTP {exc.code}): {exc.reason}",
+                status_code=exc.code,
             ) from exc
         except urllib.error.URLError as exc:
             raise BioToolsError(f"bio.tools network error: {exc.reason}") from exc
@@ -143,7 +147,9 @@ class BioToolsClient:
         raw = self._get(f"tool/{biotools_id}", params={"format": "json"})
         return self._parse_tool(raw)
 
-    def search_by_name(self, name: str, max_results: int = 5) -> list[BioToolsToolEntry]:
+    def search_by_name(
+        self, name: str, max_results: int = 5
+    ) -> list[BioToolsToolEntry]:
         """
         Search bio.tools by tool name.
 
@@ -157,7 +163,9 @@ class BioToolsClient:
         Returns:
             List of BioToolsToolEntry objects (may be empty).
         """
-        data = self._get("tool", params={"name": name, "format": "json", "page_size": max_results})
+        data = self._get(
+            "tool", params={"name": name, "format": "json", "page_size": max_results}
+        )
         entries = []
         for item in data.get("list", []):
             try:
@@ -174,6 +182,7 @@ class BioToolsClient:
         The bio.tools schema is complex and some fields may be absent or null.
         We defensively extract everything and fall back to safe defaults.
         """
+
         def _str(v: Any, default: str = "") -> str:
             return str(v).strip() if v else default
 
@@ -199,8 +208,10 @@ class BioToolsClient:
             ]
             inputs = [
                 {
-                    "data": {"uri": inp.get("data", {}).get("uri", ""),
-                              "term": inp.get("data", {}).get("term", "")},
+                    "data": {
+                        "uri": inp.get("data", {}).get("uri", ""),
+                        "term": inp.get("data", {}).get("term", ""),
+                    },
                     "formats": [
                         {"uri": fmt.get("uri", ""), "term": fmt.get("term", "")}
                         for fmt in _list(inp.get("format"))
@@ -211,8 +222,10 @@ class BioToolsClient:
             ]
             outputs = [
                 {
-                    "data": {"uri": out.get("data", {}).get("uri", ""),
-                              "term": out.get("data", {}).get("term", "")},
+                    "data": {
+                        "uri": out.get("data", {}).get("uri", ""),
+                        "term": out.get("data", {}).get("term", ""),
+                    },
                     "formats": [
                         {"uri": fmt.get("uri", ""), "term": fmt.get("term", "")}
                         for fmt in _list(out.get("format"))
@@ -221,19 +234,21 @@ class BioToolsClient:
                 }
                 for out in _list(func.get("output"))
             ]
-            functions.append({
-                "operations": operations,
-                "inputs": inputs,
-                "outputs": outputs,
-                "cmd": _str(func.get("cmd")),
-                "note": _str(func.get("note")),
-            })
+            functions.append(
+                {
+                    "operations": operations,
+                    "inputs": inputs,
+                    "outputs": outputs,
+                    "cmd": _str(func.get("cmd")),
+                    "note": _str(func.get("note")),
+                }
+            )
 
         # Publications
         publications = [
             {
                 "pmid": _str(pub.get("pmid")),
-                "doi":  _str(pub.get("doi")),
+                "doi": _str(pub.get("doi")),
                 "pmcid": _str(pub.get("pmcid")),
                 "type": _str(pub.get("type")),
                 "note": _str(pub.get("note")),
@@ -250,8 +265,11 @@ class BioToolsClient:
 
         # Downloads
         download = [
-            {"url": _str(d.get("url")), "type": _str(d.get("type")),
-             "version": _str(d.get("version"))}
+            {
+                "url": _str(d.get("url")),
+                "type": _str(d.get("type")),
+                "version": _str(d.get("version")),
+            }
             for d in _list(raw.get("download"))
             if d.get("url")
         ]

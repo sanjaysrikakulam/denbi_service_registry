@@ -53,6 +53,7 @@ There are TWO sources of EDAM annotations:
 
 Both are exposed in the API separately and can be diffed by consumers.
 """
+
 import uuid
 
 from django.db import models
@@ -94,7 +95,8 @@ class BioToolsRecord(models.Model):
     # -----------------------------------------------------------------------
 
     name = models.CharField(
-        max_length=200, blank=True,
+        max_length=200,
+        blank=True,
         help_text="Tool name as it appears in bio.tools.",
     )
     description = models.TextField(
@@ -106,11 +108,13 @@ class BioToolsRecord(models.Model):
         help_text="Tool homepage URL from bio.tools.",
     )
     version = models.CharField(
-        max_length=100, blank=True,
+        max_length=100,
+        blank=True,
         help_text="Latest version string from bio.tools.",
     )
     license = models.CharField(
-        max_length=100, blank=True,
+        max_length=100,
+        blank=True,
         help_text="SPDX license identifier from bio.tools.",
     )
     # bio.tools maturity: Emerging | Mature | Legacy
@@ -164,7 +168,8 @@ class BioToolsRecord(models.Model):
         help_text="Complete raw API response from bio.tools, stored verbatim.",
     )
     last_synced_at = models.DateTimeField(
-        null=True, blank=True,
+        null=True,
+        blank=True,
         help_text="When this record was last refreshed from the bio.tools API.",
     )
     sync_error = models.TextField(

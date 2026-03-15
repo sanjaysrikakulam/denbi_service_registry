@@ -1,7 +1,7 @@
 """
 Tests for management commands, template tags, and context processors.
 """
-import io
+
 import os
 import tempfile
 from io import StringIO
@@ -21,41 +21,41 @@ from .factories import ServiceSubmissionFactory
 
 MINIMAL_OWL = (
     b'<?xml version="1.0"?>\n'
-    b'<rdf:RDF\n'
+    b"<rdf:RDF\n"
     b'    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
     b'    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"\n'
     b'    xmlns:owl="http://www.w3.org/2002/07/owl#"\n'
     b'    xmlns:oboInOwl="http://www.geneontology.org/formats/oboInOwl#">\n'
-    b'\n'
+    b"\n"
     b'  <owl:Ontology rdf:about="http://edamontology.org/EDAM_1.25.owl">\n'
-    b'    <owl:versionInfo>1.25</owl:versionInfo>\n'
-    b'  </owl:Ontology>\n'
-    b'\n'
+    b"    <owl:versionInfo>1.25</owl:versionInfo>\n"
+    b"  </owl:Ontology>\n"
+    b"\n"
     b'  <owl:Class rdf:about="http://edamontology.org/topic_0003">\n'
-    b'    <rdfs:label>Topic</rdfs:label>\n'
-    b'    <rdfs:comment>A placeholder for an EDAM topic.</rdfs:comment>\n'
-    b'    <oboInOwl:hasExactSynonym>Subject</oboInOwl:hasExactSynonym>\n'
-    b'  </owl:Class>\n'
-    b'\n'
+    b"    <rdfs:label>Topic</rdfs:label>\n"
+    b"    <rdfs:comment>A placeholder for an EDAM topic.</rdfs:comment>\n"
+    b"    <oboInOwl:hasExactSynonym>Subject</oboInOwl:hasExactSynonym>\n"
+    b"  </owl:Class>\n"
+    b"\n"
     b'  <owl:Class rdf:about="http://edamontology.org/operation_0004">\n'
-    b'    <rdfs:label>Operation</rdfs:label>\n'
+    b"    <rdfs:label>Operation</rdfs:label>\n"
     b'    <rdfs:subClassOf rdf:resource="http://edamontology.org/topic_0003"/>\n'
-    b'    <rdfs:comment>A placeholder for an EDAM operation.</rdfs:comment>\n'
-    b'  </owl:Class>\n'
-    b'\n'
+    b"    <rdfs:comment>A placeholder for an EDAM operation.</rdfs:comment>\n"
+    b"  </owl:Class>\n"
+    b"\n"
     b'  <owl:Class rdf:about="http://edamontology.org/topic_9999">\n'
-    b'    <rdfs:label>Obsolete topic</rdfs:label>\n'
-    b'    <owl:deprecated>true</owl:deprecated>\n'
-    b'  </owl:Class>\n'
-    b'\n'
+    b"    <rdfs:label>Obsolete topic</rdfs:label>\n"
+    b"    <owl:deprecated>true</owl:deprecated>\n"
+    b"  </owl:Class>\n"
+    b"\n"
     b'  <owl:Class rdf:about="http://edamontology.org/topic_8888">\n'
-    b'  </owl:Class>\n'
-    b'\n'
+    b"  </owl:Class>\n"
+    b"\n"
     b'  <owl:Class rdf:about="http://example.com/other_class">\n'
-    b'    <rdfs:label>Not EDAM</rdfs:label>\n'
-    b'  </owl:Class>\n'
-    b'\n'
-    b'</rdf:RDF>\n'
+    b"    <rdfs:label>Not EDAM</rdfs:label>\n"
+    b"  </owl:Class>\n"
+    b"\n"
+    b"</rdf:RDF>\n"
 )
 
 
@@ -63,9 +63,9 @@ MINIMAL_OWL = (
 # sync_edam management command
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestSyncEdamCommand:
-
     def _owl_file(self):
         """Write MINIMAL_OWL to a temp file and return the path."""
         f = tempfile.NamedTemporaryFile(suffix=".owl", delete=False)
@@ -76,6 +76,7 @@ class TestSyncEdamCommand:
 
     def test_dry_run_no_db_writes(self):
         from apps.edam.models import EdamTerm
+
         owl_path = self._owl_file()
         try:
             out = StringIO()
@@ -87,6 +88,7 @@ class TestSyncEdamCommand:
 
     def test_creates_terms(self):
         from apps.edam.models import EdamTerm
+
         owl_path = self._owl_file()
         try:
             call_command("sync_edam", url=owl_path, stdout=StringIO())
@@ -98,6 +100,7 @@ class TestSyncEdamCommand:
 
     def test_correct_fields_parsed(self):
         from apps.edam.models import EdamTerm
+
         owl_path = self._owl_file()
         try:
             call_command("sync_edam", url=owl_path, stdout=StringIO())
@@ -114,6 +117,7 @@ class TestSyncEdamCommand:
 
     def test_obsolete_flag(self):
         from apps.edam.models import EdamTerm
+
         owl_path = self._owl_file()
         try:
             call_command("sync_edam", url=owl_path, stdout=StringIO())
@@ -124,6 +128,7 @@ class TestSyncEdamCommand:
 
     def test_branch_filter(self):
         from apps.edam.models import EdamTerm
+
         owl_path = self._owl_file()
         try:
             call_command("sync_edam", url=owl_path, branch="topic", stdout=StringIO())
@@ -135,6 +140,7 @@ class TestSyncEdamCommand:
 
     def test_idempotent_second_run(self):
         from apps.edam.models import EdamTerm
+
         owl_path = self._owl_file()
         try:
             call_command("sync_edam", url=owl_path, stdout=StringIO())
@@ -147,10 +153,10 @@ class TestSyncEdamCommand:
 
     def test_parent_relationship_resolved(self):
         from apps.edam.models import EdamTerm
+
         owl_path = self._owl_file()
         try:
             call_command("sync_edam", url=owl_path, stdout=StringIO())
-            op = EdamTerm.objects.get(accession="operation_0004")
             # operation_0004 has rdfs:subClassOf topic_0003 — but topic_0003 is not an operation
             # parent FK resolves if parent exists in DB (which it does)
             # No assertion on parent value since topic_0003 exists in DB
@@ -171,22 +177,32 @@ class TestSyncEdamCommand:
 
     def test_missing_file_raises_error(self):
         with pytest.raises(CommandError, match="Failed to load EDAM"):
-            call_command("sync_edam", url="/nonexistent/path/EDAM.owl", stdout=StringIO())
+            call_command(
+                "sync_edam", url="/nonexistent/path/EDAM.owl", stdout=StringIO()
+            )
 
     def test_http_load_with_mock(self):
         from apps.edam.models import EdamTerm
-        mock_resp = type("Resp", (), {
-            "read": lambda self: MINIMAL_OWL,
-            "__enter__": lambda self: self,
-            "__exit__": lambda self, *a: None,
-        })()
+
+        mock_resp = type(
+            "Resp",
+            (),
+            {
+                "read": lambda self: MINIMAL_OWL,
+                "__enter__": lambda self: self,
+                "__exit__": lambda self, *a: None,
+            },
+        )()
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            call_command("sync_edam", url="https://edamontology.org/fake.owl", stdout=StringIO())
+            call_command(
+                "sync_edam", url="https://edamontology.org/fake.owl", stdout=StringIO()
+            )
         assert EdamTerm.objects.count() == 3
 
     def test_marks_removed_terms_obsolete(self):
         """Terms in the DB but not in the OWL file are marked obsolete."""
         from apps.edam.models import EdamTerm
+
         owl_path = self._owl_file()
         try:
             call_command("sync_edam", url=owl_path, stdout=StringIO())
@@ -210,9 +226,9 @@ class TestSyncEdamCommand:
 # sync_biotools management command
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestSyncBioToolsCommand:
-
     def test_no_records_prints_message(self):
         out = StringIO()
         call_command("sync_biotools", stdout=out)
@@ -220,8 +236,11 @@ class TestSyncBioToolsCommand:
 
     def test_single_submission_not_found_raises_error(self):
         import uuid
+
         with pytest.raises(CommandError, match="not found"):
-            call_command("sync_biotools", submission=str(uuid.uuid4()), stdout=StringIO())
+            call_command(
+                "sync_biotools", submission=str(uuid.uuid4()), stdout=StringIO()
+            )
 
     def test_single_submission_no_url_raises_error(self):
         sub = ServiceSubmissionFactory(biotools_url="")
@@ -230,8 +249,11 @@ class TestSyncBioToolsCommand:
 
     def test_single_submission_dry_run(self):
         from apps.submissions.models import ServiceSubmission
+
         sub = ServiceSubmissionFactory(biotools_url="")
-        ServiceSubmission.objects.filter(pk=sub.pk).update(biotools_url="https://bio.tools/blast")
+        ServiceSubmission.objects.filter(pk=sub.pk).update(
+            biotools_url="https://bio.tools/blast"
+        )
         sub.refresh_from_db()
 
         out = StringIO()
@@ -242,8 +264,11 @@ class TestSyncBioToolsCommand:
     def test_single_submission_sync_success(self):
         from apps.biotools.sync import SyncResult
         from apps.submissions.models import ServiceSubmission
+
         sub = ServiceSubmissionFactory(biotools_url="")
-        ServiceSubmission.objects.filter(pk=sub.pk).update(biotools_url="https://bio.tools/blast")
+        ServiceSubmission.objects.filter(pk=sub.pk).update(
+            biotools_url="https://bio.tools/blast"
+        )
         sub.refresh_from_db()
 
         ok_result = SyncResult(ok=True, biotools_id="blast", created=True, error="")
@@ -255,19 +280,27 @@ class TestSyncBioToolsCommand:
     def test_single_submission_sync_failure(self):
         from apps.biotools.sync import SyncResult
         from apps.submissions.models import ServiceSubmission
+
         sub = ServiceSubmissionFactory(biotools_url="")
-        ServiceSubmission.objects.filter(pk=sub.pk).update(biotools_url="https://bio.tools/blast")
+        ServiceSubmission.objects.filter(pk=sub.pk).update(
+            biotools_url="https://bio.tools/blast"
+        )
         sub.refresh_from_db()
 
-        err_result = SyncResult(ok=False, biotools_id="blast", created=False, error="API down")
+        err_result = SyncResult(
+            ok=False, biotools_id="blast", created=False, error="API down"
+        )
         with patch("apps.biotools.sync.sync_tool", return_value=err_result):
             out = StringIO()
             err = StringIO()
-            call_command("sync_biotools", submission=str(sub.pk), stdout=out, stderr=err)
+            call_command(
+                "sync_biotools", submission=str(sub.pk), stdout=out, stderr=err
+            )
         assert "Sync failed" in err.getvalue() or "API down" in err.getvalue()
 
     def test_bulk_dry_run(self):
         from apps.biotools.models import BioToolsRecord
+
         sub = ServiceSubmissionFactory(biotools_url="")
         BioToolsRecord.objects.create(
             submission=sub, biotools_id="blast", name="BLAST", raw_json={}
@@ -280,6 +313,7 @@ class TestSyncBioToolsCommand:
     def test_bulk_sync_success(self):
         from apps.biotools.models import BioToolsRecord
         from apps.biotools.sync import SyncResult
+
         sub = ServiceSubmissionFactory(biotools_url="")
         BioToolsRecord.objects.create(
             submission=sub, biotools_id="blast", name="BLAST", raw_json={}
@@ -293,11 +327,14 @@ class TestSyncBioToolsCommand:
     def test_bulk_sync_with_error(self):
         from apps.biotools.models import BioToolsRecord
         from apps.biotools.sync import SyncResult
+
         sub = ServiceSubmissionFactory(biotools_url="")
         BioToolsRecord.objects.create(
             submission=sub, biotools_id="blast", name="BLAST", raw_json={}
         )
-        err_result = SyncResult(ok=False, biotools_id="blast", created=False, error="timeout")
+        err_result = SyncResult(
+            ok=False, biotools_id="blast", created=False, error="timeout"
+        )
         with patch("apps.biotools.sync.sync_tool", return_value=err_result):
             out = StringIO()
             err = StringIO()
@@ -313,31 +350,36 @@ class TestSyncBioToolsCommand:
 # Template tags
 # ---------------------------------------------------------------------------
 
-class TestRegistryTags:
 
+class TestRegistryTags:
     def test_site_logo_url_returns_from_settings(self, settings):
         settings.SITE_CONFIG = {"site": {"logo_url": "https://example.com/logo.svg"}}
         from apps.submissions.templatetags.registry_tags import site_logo_url
+
         assert site_logo_url() == "https://example.com/logo.svg"
 
     def test_site_logo_url_returns_empty_when_not_set(self, settings):
         settings.SITE_CONFIG = {}
         from apps.submissions.templatetags.registry_tags import site_logo_url
+
         assert site_logo_url() == ""
 
     def test_site_setting_returns_value(self, settings):
         settings.SITE_CONFIG = {"contact": {"email": "test@example.com"}}
         from apps.submissions.templatetags.registry_tags import site_setting
+
         assert site_setting("contact", "email") == "test@example.com"
 
     def test_site_setting_returns_default(self, settings):
         settings.SITE_CONFIG = {}
         from apps.submissions.templatetags.registry_tags import site_setting
+
         assert site_setting("contact", "missing_key", default="fallback") == "fallback"
 
     def test_site_setting_missing_section(self, settings):
         settings.SITE_CONFIG = {}
         from apps.submissions.templatetags.registry_tags import site_setting
+
         assert site_setting("nosection", "nokey") == ""
 
 
@@ -345,11 +387,13 @@ class TestRegistryTags:
 # Context processor
 # ---------------------------------------------------------------------------
 
+
 class TestSiteContextProcessor:
     rf = RequestFactory()
 
     def _call(self, site_config):
         from apps.submissions.context_processors import site_context
+
         request = self.rf.get("/")
         with patch("apps.submissions.context_processors.dj_settings") as mock_settings:
             mock_settings.SITE_CONFIG = site_config
@@ -380,11 +424,13 @@ class TestSiteContextProcessor:
         assert "WEBSITE_URL" in ctx
 
     def test_site_dict_includes_sections(self):
-        ctx = self._call({
-            "site": {"name": "Reg"},
-            "contact": {"email": "a@b.com"},
-            "links": {"website": "https://example.com"},
-        })
+        ctx = self._call(
+            {
+                "site": {"name": "Reg"},
+                "contact": {"email": "a@b.com"},
+                "links": {"website": "https://example.com"},
+            }
+        )
         assert ctx["SITE"]["contact"]["email"] == "a@b.com"
         assert ctx["SITE"]["links"]["website"] == "https://example.com"
 
@@ -392,6 +438,7 @@ class TestSiteContextProcessor:
         """When logo_url is not in config, check if static/img/logo.svg exists."""
         import tempfile
         from pathlib import Path
+
         with tempfile.TemporaryDirectory() as tmpdir:
             static_img = Path(tmpdir) / "static" / "img"
             static_img.mkdir(parents=True)
@@ -401,8 +448,13 @@ class TestSiteContextProcessor:
             from unittest.mock import patch as _patch
 
             request = self.rf.get("/")
-            with _patch("apps.submissions.context_processors.dj_settings") as ms, \
-                 _patch("apps.submissions.context_processors.static", return_value="/static/img/logo.svg"):
+            with (
+                _patch("apps.submissions.context_processors.dj_settings") as ms,
+                _patch(
+                    "apps.submissions.context_processors.static",
+                    return_value="/static/img/logo.svg",
+                ),
+            ):
                 ms.SITE_CONFIG = {}
                 ms.BASE_DIR = tmpdir
                 ctx = site_context(request)

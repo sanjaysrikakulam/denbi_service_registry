@@ -2,6 +2,7 @@
 de.NBI Service Registry — Root URL Configuration
 =================================================
 """
+
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
@@ -13,9 +14,13 @@ from drf_spectacular.views import (
 )
 
 # Customise Django admin site header/title from site.toml
-_site_name = getattr(settings, "SITE_CONFIG", {}).get("site", {}).get("name", "de.NBI Service Registry")
+_site_name = (
+    getattr(settings, "SITE_CONFIG", {})
+    .get("site", {})
+    .get("name", "de.NBI Service Registry")
+)
 admin.site.site_header = f"{_site_name} Administration"
-admin.site.site_title  = f"{_site_name} Admin"
+admin.site.site_title = f"{_site_name} Admin"
 admin.site.index_title = "Administration Portal"
 
 admin_prefix = getattr(settings, "ADMIN_URL_PREFIX", "admin-denbi")
@@ -23,21 +28,20 @@ admin_prefix = getattr(settings, "ADMIN_URL_PREFIX", "admin-denbi")
 urlpatterns = [
     # Admin — URL path is obfuscated via [admin] url_prefix in site.toml (or ADMIN_URL_PREFIX env var)
     path(f"{admin_prefix}/", admin.site.urls),
-
     # Public form routes
     path("", include("apps.submissions.urls")),
-
     # bio.tools form integration (HTMX prefill + name search)
     path("biotools/", include("apps.biotools.urls")),
-
     # REST API v1
     path("api/v1/", include("apps.api.urls")),
-
     # OpenAPI schema + docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path(
+        "api/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-
     # Health checks (used by Docker / load balancer)
     path("health/", include("apps.submissions.health_urls")),
 ]
@@ -45,4 +49,5 @@ urlpatterns = [
 # Serve media files in development
 if settings.DEBUG:
     from django.conf.urls.static import static
+
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

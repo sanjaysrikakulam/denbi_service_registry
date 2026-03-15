@@ -9,6 +9,7 @@ DJANGO_SETTINGS_MODULE here, or via:
 
 Do NOT use these settings outside of testing.
 """
+
 import os
 
 # Provide required env vars before importing base settings.

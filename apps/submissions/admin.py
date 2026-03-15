@@ -8,6 +8,7 @@ Features:
   - Status transitions fire email notifications via Celery
   - All admin key operations logged to Django LogEntry
 """
+
 import csv
 import json
 import logging
@@ -29,15 +30,22 @@ logger = logging.getLogger(__name__)
 # API Key inline
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class SubmissionAPIKeyInline(admin.TabularInline):
     """Read-only inline — plaintext keys are never stored or displayed."""
+
     model = SubmissionAPIKey
     extra = 0
     can_delete = False
     show_change_link = False
     readonly_fields = (
-        "key_hash_preview", "label", "scope", "created_by",
-        "created_at", "last_used_at", "status_display",
+        "key_hash_preview",
+        "label",
+        "scope",
+        "created_by",
+        "created_at",
+        "last_used_at",
+        "status_display",
     )
     fields = readonly_fields
 
@@ -53,7 +61,7 @@ class SubmissionAPIKeyInline(admin.TabularInline):
         if obj.is_active:
             return mark_safe(
                 '<span style="color:var(--link-fg);font-weight:600;font-size:.8rem">'
-                '● Active</span>'
+                "● Active</span>"
             )
         return mark_safe(
             '<span style="color:var(--body-quiet-color);font-size:.8rem">○ Revoked</span>'
@@ -67,9 +75,9 @@ class SubmissionAPIKeyInline(admin.TabularInline):
 # ServiceSubmission admin
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @admin.register(ServiceSubmission)
 class ServiceSubmissionAdmin(admin.ModelAdmin):
-
     # ── List view ────────────────────────────────────────────────────────────
     list_display = (
         "service_name_link",
@@ -109,73 +117,111 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
     inlines = [SubmissionAPIKeyInline]
 
     readonly_fields = (
-        "id", "submitted_at", "updated_at",
-        "submission_ip_display", "status",
+        "id",
+        "submitted_at",
+        "updated_at",
+        "submission_ip_display",
+        "status",
         "status_actions",
         "key_management_panel",
     )
 
     fieldsets = (
-        ("Status & Metadata", {
-            "fields": (
-                ("id", "status"),
-                ("submitted_at", "updated_at"),
-                "submission_ip_display",
-                "status_actions",
-            ),
-        }),
-        ("A — General", {
-            "fields": (("date_of_entry",), ("submitter_first_name", "submitter_last_name", "submitter_affiliation"), "register_as_elixir"),
-        }),
-        ("B — Service Master Data", {
-            "fields": (
-                "service_name",
-                "service_description",
-                ("year_established", "service_categories"),
-                ("is_toolbox", "toolbox_name"),
-                "user_knowledge_required",
-                ("edam_topics", "edam_operations"),
-                "publications_pmids",
-            ),
-        }),
-        ("C — Responsibilities", {
-            "fields": (
-                "responsible_pis",
-                "associated_partner_note",
-                "host_institute",
-                "service_center",
-                ("public_contact_email",),
-                ("internal_contact_name", "internal_contact_email"),
-            ),
-        }),
-        ("D — Websites & Links", {
-            "fields": (
-                ("website_url", "terms_of_use_url"),
-                ("license", "github_url"),
-                ("biotools_url", "fairsharing_url"),
-                "other_registry_url",
-            ),
-        }),
-        ("E — KPIs", {
-            "fields": (("kpi_monitoring", "kpi_start_year"),),
-        }),
-        ("F — Discoverability & Outreach", {
-            "fields": (
-                ("keywords_uncited", "keywords_seo"),
-                ("outreach_consent", "survey_participation"),
-                "comments",
-            ),
-        }),
-        ("G — Consent", {
-            "fields": ("data_protection_consent",),
-        }),
-        ("🔑 API Key Management", {
-            "fields": ("key_management_panel",),
-            "description": (
-                "Use the buttons below to issue, reset, or revoke API keys. "
-                "Plaintext keys are shown exactly once — copy them before dismissing."
-            ),
-        }),
+        (
+            "Status & Metadata",
+            {
+                "fields": (
+                    ("id", "status"),
+                    ("submitted_at", "updated_at"),
+                    "submission_ip_display",
+                    "status_actions",
+                ),
+            },
+        ),
+        (
+            "A — General",
+            {
+                "fields": (
+                    ("date_of_entry",),
+                    (
+                        "submitter_first_name",
+                        "submitter_last_name",
+                        "submitter_affiliation",
+                    ),
+                    "register_as_elixir",
+                ),
+            },
+        ),
+        (
+            "B — Service Master Data",
+            {
+                "fields": (
+                    "service_name",
+                    "service_description",
+                    ("year_established", "service_categories"),
+                    ("is_toolbox", "toolbox_name"),
+                    "user_knowledge_required",
+                    ("edam_topics", "edam_operations"),
+                    "publications_pmids",
+                ),
+            },
+        ),
+        (
+            "C — Responsibilities",
+            {
+                "fields": (
+                    "responsible_pis",
+                    "associated_partner_note",
+                    "host_institute",
+                    "service_center",
+                    ("public_contact_email",),
+                    ("internal_contact_name", "internal_contact_email"),
+                ),
+            },
+        ),
+        (
+            "D — Websites & Links",
+            {
+                "fields": (
+                    ("website_url", "terms_of_use_url"),
+                    ("license", "github_url"),
+                    ("biotools_url", "fairsharing_url"),
+                    "other_registry_url",
+                ),
+            },
+        ),
+        (
+            "E — KPIs",
+            {
+                "fields": (("kpi_monitoring", "kpi_start_year"),),
+            },
+        ),
+        (
+            "F — Discoverability & Outreach",
+            {
+                "fields": (
+                    ("keywords_uncited", "keywords_seo"),
+                    ("outreach_consent", "survey_participation"),
+                    "comments",
+                ),
+            },
+        ),
+        (
+            "G — Consent",
+            {
+                "fields": ("data_protection_consent",),
+            },
+        ),
+        (
+            "🔑 API Key Management",
+            {
+                "fields": ("key_management_panel",),
+                "description": (
+                    "Use the buttons below to issue, reset, or revoke API keys. "
+                    "Plaintext keys are shown exactly once — copy them before dismissing."
+                ),
+            },
+        ),
     )
 
     actions = [
@@ -195,27 +241,31 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
     @admin.display(description="Service", ordering="service_name")
     def service_name_link(self, obj):
         from django.urls import reverse
+
         url = reverse("admin:submissions_servicesubmission_change", args=[obj.pk])
-        return format_html('<strong><a href="{}">{}</a></strong>', url, obj.service_name)
+        return format_html(
+            '<strong><a href="{}">{}</a></strong>', url, obj.service_name
+        )
 
     @admin.display(description="Status", ordering="status")
     def status_badge(self, obj):
         colours = {
-            "draft":        ("#6b7280", "#f3f4f6"),
-            "submitted":    ("#1d4ed8", "#eff6ff"),
+            "draft": ("#6b7280", "#f3f4f6"),
+            "submitted": ("#1d4ed8", "#eff6ff"),
             "under_review": ("#92400e", "#fffbeb"),
-            "approved":     ("#166534", "#f0fdf4"),
-            "rejected":     ("#991b1b", "#fef2f2"),
+            "approved": ("#166534", "#f0fdf4"),
+            "rejected": ("#991b1b", "#fef2f2"),
         }
         text_col, bg_col = colours.get(obj.status, ("#6b7280", "#f3f4f6"))
         return format_html(
             '<span style="'
-            'display:inline-block;font-size:.68rem;font-weight:700;'
-            'letter-spacing:.04em;text-transform:uppercase;'
-            'padding:2px 9px;border-radius:20px;'
-            'color:{};background:{};white-space:nowrap'
+            "display:inline-block;font-size:.68rem;font-weight:700;"
+            "letter-spacing:.04em;text-transform:uppercase;"
+            "padding:2px 9px;border-radius:20px;"
+            "color:{};background:{};white-space:nowrap"
             '">{}</span>',
-            text_col, bg_col,
+            text_col,
+            bg_col,
             obj.get_status_display(),
         )
 
@@ -232,23 +282,32 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
     @admin.display(description="API Keys")
     def key_count(self, obj):
         active = obj.api_keys.filter(is_active=True).count()
-        total  = obj.api_keys.count()
+        total = obj.api_keys.count()
         if active == 0:
-            return format_html('<span style="color:var(--body-quiet-color);font-size:.8rem">0 / {}</span>', total)
+            return format_html(
+                '<span style="color:var(--body-quiet-color);font-size:.8rem">0 / {}</span>',
+                total,
+            )
         return format_html(
             '<span style="color:#166534;font-size:.8rem;font-weight:600">{}</span>'
             '<span style="color:var(--body-quiet-color);font-size:.8rem"> / {}</span>',
-            active, total,
+            active,
+            total,
         )
 
     @admin.display(description="Keys")
     def api_key_link(self, obj):
         from django.urls import reverse
-        url = reverse("admin:submissions_submissionapikey_changelist") + f"?submission__id__exact={obj.pk}"
+
+        url = (
+            reverse("admin:submissions_submissionapikey_changelist")
+            + f"?submission__id__exact={obj.pk}"
+        )
         count = obj.api_keys.count()
         return format_html(
             '<a href="{}" style="font-size:.8rem;white-space:nowrap">🔑 Manage ({})</a>',
-            url, count,
+            url,
+            count,
         )
 
     @admin.display(description="Submission IP")
@@ -262,15 +321,15 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
         current = obj.status
         buttons = []
         status_opts = [
-            ("_approve",      "Approve",      "#166534", "#f0fdf4", "#bbf7d0"),
-            ("_reject",       "Reject",       "#991b1b", "#fef2f2", "#fecaca"),
+            ("_approve", "Approve", "#166534", "#f0fdf4", "#bbf7d0"),
+            ("_reject", "Reject", "#991b1b", "#fef2f2", "#fecaca"),
             ("_under_review", "Mark Under Review", "#92400e", "#fffbeb", "#fde68a"),
         ]
         for name, label, color, bg, border in status_opts:
             active = (
-                (name == "_approve" and current == "approved") or
-                (name == "_reject" and current == "rejected") or
-                (name == "_under_review" and current == "under_review")
+                (name == "_approve" and current == "approved")
+                or (name == "_reject" and current == "rejected")
+                or (name == "_under_review" and current == "under_review")
             )
             style = (
                 f"background:{bg};color:{color};border:1.5px solid {border};"
@@ -282,12 +341,12 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
             check = "✓ " if active else ""
             buttons.append(
                 f'<button type="submit" name="{name}" value="1" style="{style}" {"disabled" if active else ""}>'
-                f'{check}{label}</button>'
+                f"{check}{label}</button>"
             )
         return mark_safe(
             '<div style="display:flex;gap:.5rem;flex-wrap:wrap">'
             + "".join(buttons)
-            + '</div>'
+            + "</div>"
         )
 
     @admin.display(description="API Key Actions")
@@ -337,7 +396,9 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
             send_submission_notification.delay(str(sub.id), event="status_changed")
             self._log(request, sub, f"Status changed {old} → {new_status}")
             updated += 1
-        self.message_user(request, f"{updated} submission(s) marked as {label}.", messages.SUCCESS)
+        self.message_user(
+            request, f"{updated} submission(s) marked as {label}.", messages.SUCCESS
+        )
 
     @admin.action(description="✅ Approve selected")
     def action_approve(self, request, queryset):
@@ -356,18 +417,41 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
         resp = HttpResponse(content_type="text/csv")
         resp["Content-Disposition"] = 'attachment; filename="submissions.csv"'
         w = csv.writer(resp)
-        w.writerow([
-            "id", "service_name", "status", "submitter_display", "host_institute",
-            "service_center", "register_as_elixir", "submitted_at", "updated_at",
-            "website_url", "license", "kpi_monitoring", "year_established",
-        ])
+        w.writerow(
+            [
+                "id",
+                "service_name",
+                "status",
+                "submitter_display",
+                "host_institute",
+                "service_center",
+                "register_as_elixir",
+                "submitted_at",
+                "updated_at",
+                "website_url",
+                "license",
+                "kpi_monitoring",
+                "year_established",
+            ]
+        )
         for s in queryset.select_related("service_center"):
-            w.writerow([
-                str(s.id), s.service_name, s.status, f"{s.submitter_last_name}, {s.submitter_first_name} — {s.submitter_affiliation}",
-                s.host_institute, str(s.service_center), s.register_as_elixir,
-                s.submitted_at.isoformat(), s.updated_at.isoformat(),
-                s.website_url, s.license, s.kpi_monitoring, s.year_established,
-            ])
+            w.writerow(
+                [
+                    str(s.id),
+                    s.service_name,
+                    s.status,
+                    f"{s.submitter_last_name}, {s.submitter_first_name} — {s.submitter_affiliation}",
+                    s.host_institute,
+                    str(s.service_center),
+                    s.register_as_elixir,
+                    s.submitted_at.isoformat(),
+                    s.updated_at.isoformat(),
+                    s.website_url,
+                    s.license,
+                    s.kpi_monitoring,
+                    s.year_established,
+                ]
+            )
         return resp
 
     @admin.action(description="📥 Export selected as JSON")
@@ -378,21 +462,25 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
         for s in queryset.select_related("service_center").prefetch_related(
             "service_categories", "responsible_pis"
         ):
-            data.append({
-                "id": str(s.id),
-                "service_name": s.service_name,
-                "status": s.status,
-                "submitter_name": f"{s.submitter_first_name} {s.submitter_last_name}".strip(),
-                "submitter_affiliation": s.submitter_affiliation,
-                "host_institute": s.host_institute,
-                "service_center": str(s.service_center),
-                "categories": list(s.service_categories.values_list("name", flat=True)),
-                "register_as_elixir": s.register_as_elixir,
-                "website_url": s.website_url,
-                "license": s.license,
-                "submitted_at": s.submitted_at.isoformat(),
-                "updated_at": s.updated_at.isoformat(),
-            })
+            data.append(
+                {
+                    "id": str(s.id),
+                    "service_name": s.service_name,
+                    "status": s.status,
+                    "submitter_name": f"{s.submitter_first_name} {s.submitter_last_name}".strip(),
+                    "submitter_affiliation": s.submitter_affiliation,
+                    "host_institute": s.host_institute,
+                    "service_center": str(s.service_center),
+                    "categories": list(
+                        s.service_categories.values_list("name", flat=True)
+                    ),
+                    "register_as_elixir": s.register_as_elixir,
+                    "website_url": s.website_url,
+                    "license": s.license,
+                    "submitted_at": s.submitted_at.isoformat(),
+                    "updated_at": s.updated_at.isoformat(),
+                }
+            )
         json.dump(data, resp, indent=2)
         return resp
 
@@ -406,15 +494,26 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
         elif "_issue_new_key" in request.POST:
             self._issue_new_key(request, obj)
         elif "_approve" in request.POST:
-            self._change_status(request, obj.__class__.objects.filter(pk=obj.pk), "approved", "Approved")
+            self._change_status(
+                request, obj.__class__.objects.filter(pk=obj.pk), "approved", "Approved"
+            )
         elif "_reject" in request.POST:
-            self._change_status(request, obj.__class__.objects.filter(pk=obj.pk), "rejected", "Rejected")
+            self._change_status(
+                request, obj.__class__.objects.filter(pk=obj.pk), "rejected", "Rejected"
+            )
         elif "_under_review" in request.POST:
-            self._change_status(request, obj.__class__.objects.filter(pk=obj.pk), "under_review", "Under Review")
+            self._change_status(
+                request,
+                obj.__class__.objects.filter(pk=obj.pk),
+                "under_review",
+                "Under Review",
+            )
         return super().response_change(request, obj)
 
     def _revoke_all_keys(self, request, sub):
-        n = SubmissionAPIKey.objects.filter(submission=sub, is_active=True).update(is_active=False)
+        n = SubmissionAPIKey.objects.filter(submission=sub, is_active=True).update(
+            is_active=False
+        )
         self._log(request, sub, f"Revoked {n} active key(s).")
         self.message_user(
             request,
@@ -423,10 +522,14 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
         )
 
     def _reset_key(self, request, sub):
-        SubmissionAPIKey.objects.filter(submission=sub, is_active=True).update(is_active=False)
+        SubmissionAPIKey.objects.filter(submission=sub, is_active=True).update(
+            is_active=False
+        )
         label = f"Admin reset {timezone.now().strftime('%Y-%m-%d')} by {request.user.username}"
         key_obj, plaintext = SubmissionAPIKey.create_for_submission(
-            submission=sub, label=label, created_by=request.user.username,
+            submission=sub,
+            label=label,
+            created_by=request.user.username,
         )
         self._log(request, sub, f"Reset API key. New prefix: {key_obj.key_hash[:16]}")
         self.message_user(
@@ -448,16 +551,22 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
         if scope not in ("read", "write"):
             scope = "write"
         key_obj, plaintext = SubmissionAPIKey.create_for_submission(
-            submission=sub, label=label, created_by=request.user.username, scope=scope,
+            submission=sub,
+            label=label,
+            created_by=request.user.username,
+            scope=scope,
         )
-        self._log(request, sub, f"Issued new key '{label}'. Prefix: {key_obj.key_hash[:16]}")
+        self._log(
+            request, sub, f"Issued new key '{label}'. Prefix: {key_obj.key_hash[:16]}"
+        )
         self.message_user(
             request,
             format_html(
                 "New API key issued — label: <em>{}</em>. "
                 "<strong>Copy now — shown once only:</strong>"
                 "<br><code>{}</code>",
-                label, plaintext,
+                label,
+                plaintext,
             ),
             messages.WARNING,
         )
@@ -483,26 +592,51 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
     This mirrors the panel on ServiceSubmissionAdmin so admins can manage
     keys from either place.
     """
-    list_display        = ("label", "submission_link", "scope_badge", "status_badge", "created_by", "created_at", "last_used_at")
-    list_display_links  = ("label",)
-    list_filter         = ("is_active", "submission__status")
-    search_fields       = ("submission__service_name", "label", "created_by")
-    readonly_fields     = ("id", "key_hash", "submission_link", "created_at", "last_used_at", "sibling_key_panel")
+
+    list_display = (
+        "label",
+        "submission_link",
+        "scope_badge",
+        "status_badge",
+        "created_by",
+        "created_at",
+        "last_used_at",
+    )
+    list_display_links = ("label",)
+    list_filter = ("is_active", "submission__status")
+    search_fields = ("submission__service_name", "label", "created_by")
+    readonly_fields = (
+        "id",
+        "key_hash",
+        "submission_link",
+        "created_at",
+        "last_used_at",
+        "sibling_key_panel",
+    )
     fieldsets = (
-        ("This Key", {
-            "fields": (("label", "is_active"), ("submission", "created_by")),
-        }),
-        ("🔑 All Keys for This Submission", {
-            "fields": ("sibling_key_panel",),
-            "description": (
-                "Issue, reset, or revoke keys for the submission this key belongs to. "
-                "Plaintext keys are shown exactly once — copy before dismissing."
-            ),
-        }),
-        ("Audit", {
-            "fields": (("id", "key_hash"), ("created_at", "last_used_at")),
-            "classes": ("collapse",),
-        }),
+        (
+            "This Key",
+            {
+                "fields": (("label", "is_active"), ("submission", "created_by")),
+            },
+        ),
+        (
+            "🔑 All Keys for This Submission",
+            {
+                "fields": ("sibling_key_panel",),
+                "description": (
+                    "Issue, reset, or revoke keys for the submission this key belongs to. "
+                    "Plaintext keys are shown exactly once — copy before dismissing."
+                ),
+            },
+        ),
+        (
+            "Audit",
+            {
+                "fields": (("id", "key_hash"), ("created_at", "last_used_at")),
+                "classes": ("collapse",),
+            },
+        ),
     )
     ordering = ("-created_at",)
     save_on_top = True
@@ -512,10 +646,14 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
     @admin.display(description="Submission", ordering="submission__service_name")
     def submission_link(self, obj):
         from django.urls import reverse
-        url = reverse("admin:submissions_servicesubmission_change", args=[obj.submission_id])
+
+        url = reverse(
+            "admin:submissions_servicesubmission_change", args=[obj.submission_id]
+        )
         return format_html(
             '<a href="{}">{}</a>',
-            url, obj.submission,
+            url,
+            obj.submission,
         )
 
     @admin.display(description="Status")
@@ -548,18 +686,28 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
             return "Save this key first."
 
         sub = obj.submission
-        siblings = SubmissionAPIKey.objects.filter(submission=sub).order_by("-created_at")
+        siblings = SubmissionAPIKey.objects.filter(submission=sub).order_by(
+            "-created_at"
+        )
 
         rows = []
         for k in siblings:
-            active_style = "color:var(--link-fg);font-weight:700" if k.is_active else "color:var(--body-quiet-color)"
-            status_html  = "● Active" if k.is_active else "○ Revoked"
-            this_marker  = " ◀ this key" if k.pk == obj.pk else ""
-            highlight    = "background:var(--darkened-bg);outline:2px solid var(--link-fg);" if k.pk == obj.pk else ""
+            active_style = (
+                "color:var(--link-fg);font-weight:700"
+                if k.is_active
+                else "color:var(--body-quiet-color)"
+            )
+            status_html = "● Active" if k.is_active else "○ Revoked"
+            this_marker = " ◀ this key" if k.pk == obj.pk else ""
+            highlight = (
+                "background:var(--darkened-bg);outline:2px solid var(--link-fg);"
+                if k.pk == obj.pk
+                else ""
+            )
             scope_html = (
                 '<span style="background:#1e40af;color:#fff;border-radius:3px;padding:1px 5px;font-size:.7rem;font-weight:700">✏ rw</span>'
-                if k.scope == "write" else
-                '<span style="background:#166534;color:#fff;border-radius:3px;padding:1px 5px;font-size:.7rem;font-weight:700">👁 ro</span>'
+                if k.scope == "write"
+                else '<span style="background:#166534;color:#fff;border-radius:3px;padding:1px 5px;font-size:.7rem;font-weight:700">👁 ro</span>'
             )
             rows.append(
                 format_html(
@@ -570,7 +718,7 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
                     '<td style="padding:.3rem .6rem;font-size:.8rem;color:var(--body-fg)">{created_at}</td>'
                     '<td style="padding:.3rem .6rem;font-size:.8rem;{active_style}">{status}</td>'
                     '<td style="padding:.3rem .6rem">{scope}</td>'
-                    '</tr>',
+                    "</tr>",
                     highlight=highlight,
                     hash=k.key_hash[:16],
                     label=k.label,
@@ -599,9 +747,9 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
             'letter-spacing:.05em;color:var(--body-quiet-color);text-align:left">Status</th>'
             '<th style="padding:.3rem .6rem;font-size:.7rem;font-weight:700;text-transform:uppercase;'
             'letter-spacing:.05em;color:var(--body-quiet-color);text-align:left">Scope</th>'
-            '</tr></thead>'
-            '<tbody>' + ''.join(rows) + '</tbody>'
-            '</table>'
+            "</tr></thead>"
+            "<tbody>" + "".join(rows) + "</tbody>"
+            "</table>"
         )
 
         buttons_html = (
@@ -609,30 +757,30 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
             '<button type="submit" name="_issue_new_key" value="1" '
             'style="background:#5c9d25;color:#fff;border:none;border-radius:6px;'
             'padding:.38rem .85rem;font-size:.82rem;font-weight:600;cursor:pointer">'
-            'Issue new key</button>'
+            "Issue new key</button>"
             '<button type="submit" name="_reset_key" value="1" '
             'style="background:#d97706;color:#fff;border:none;border-radius:6px;'
             'padding:.38rem .85rem;font-size:.82rem;font-weight:600;cursor:pointer">'
-            'Reset (revoke all + issue one)</button>'
+            "Reset (revoke all + issue one)</button>"
             '<button type="submit" name="_revoke_all_keys" value="1" '
             'style="background:#dc3545;color:#fff;border:none;border-radius:6px;'
             'padding:.38rem .85rem;font-size:.82rem;font-weight:600;cursor:pointer">'
-            'Revoke all keys</button>'
-            '</div>'
+            "Revoke all keys</button>"
+            "</div>"
             '<p style="margin:.3rem 0 0;font-size:.78rem;color:var(--body-quiet-color);'
             'display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">'
             '<span>Label (optional): <input type="text" name="new_key_label" '
             'placeholder="e.g. CI pipeline 2026" '
             'style="border:1px solid var(--border-color);border-radius:5px;padding:.25rem .5rem;'
-            'background:var(--body-bg);color:var(--body-fg);'
+            "background:var(--body-bg);color:var(--body-fg);"
             'font-size:.78rem;width:180px;margin-left:.4rem"></span>'
             '<span>Scope: <select name="new_key_scope" '
             'style="border:1px solid var(--border-color);border-radius:5px;padding:.25rem .4rem;'
             'background:var(--body-bg);color:var(--body-fg);font-size:.78rem;margin-left:.3rem">'
             '<option value="write" selected>read-write</option>'
             '<option value="read">read-only</option>'
-            '</select></span>'
-            '</p>'
+            "</select></span>"
+            "</p>"
         )
 
         return mark_safe(table_html + buttons_html)
@@ -642,16 +790,30 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
     def response_change(self, request, obj):
         sub = obj.submission
         if "_revoke_all_keys" in request.POST:
-            n = SubmissionAPIKey.objects.filter(submission=sub, is_active=True).update(is_active=False)
-            self._log_key_action(request, obj, f"Revoked {n} active key(s) via key admin.")
-            self.message_user(request, f"Revoked {n} active key(s) for '{sub.service_name}'.", messages.WARNING)
+            n = SubmissionAPIKey.objects.filter(submission=sub, is_active=True).update(
+                is_active=False
+            )
+            self._log_key_action(
+                request, obj, f"Revoked {n} active key(s) via key admin."
+            )
+            self.message_user(
+                request,
+                f"Revoked {n} active key(s) for '{sub.service_name}'.",
+                messages.WARNING,
+            )
         elif "_reset_key" in request.POST:
-            SubmissionAPIKey.objects.filter(submission=sub, is_active=True).update(is_active=False)
+            SubmissionAPIKey.objects.filter(submission=sub, is_active=True).update(
+                is_active=False
+            )
             label = f"Admin reset {timezone.now().strftime('%Y-%m-%d')} by {request.user.username}"
             key_obj, plaintext = SubmissionAPIKey.create_for_submission(
-                submission=sub, label=label, created_by=request.user.username,
+                submission=sub,
+                label=label,
+                created_by=request.user.username,
             )
-            self._log_key_action(request, obj, f"Reset all keys. New prefix: {key_obj.key_hash[:16]}")
+            self._log_key_action(
+                request, obj, f"Reset all keys. New prefix: {key_obj.key_hash[:16]}"
+            )
             self.message_user(
                 request,
                 format_html(
@@ -669,15 +831,23 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
             if scope not in ("read", "write"):
                 scope = "write"
             key_obj, plaintext = SubmissionAPIKey.create_for_submission(
-                submission=sub, label=label, created_by=request.user.username, scope=scope,
+                submission=sub,
+                label=label,
+                created_by=request.user.username,
+                scope=scope,
             )
-            self._log_key_action(request, obj, f"Issued new key '{label}'. Prefix: {key_obj.key_hash[:16]}")
+            self._log_key_action(
+                request,
+                obj,
+                f"Issued new key '{label}'. Prefix: {key_obj.key_hash[:16]}",
+            )
             self.message_user(
                 request,
                 format_html(
                     "New key issued — label: <em>{}</em>. "
                     "<strong>Copy now — shown once only:</strong><br><code>{}</code>",
-                    label, plaintext,
+                    label,
+                    plaintext,
                 ),
                 messages.WARNING,
             )

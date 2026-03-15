@@ -3,6 +3,7 @@ Tests for the biotools app: client, sync, tasks, signals, and views.
 
 All HTTP calls to bio.tools are mocked — no network access is made.
 """
+
 import json
 import urllib.error
 import urllib.request
@@ -48,22 +49,36 @@ FULL_RAW = {
     "cost": "Free of charge",
     "topic": [
         {"uri": "http://edamontology.org/topic_0080", "term": "Sequence analysis"},
-        {"uri": "http://edamontology.org/topic_0160", "term": "Sequence sites, features and motifs"},
+        {
+            "uri": "http://edamontology.org/topic_0160",
+            "term": "Sequence sites, features and motifs",
+        },
     ],
     "function": [
         {
             "operation": [
-                {"uri": "http://edamontology.org/operation_0346", "term": "Sequence similarity search"}
+                {
+                    "uri": "http://edamontology.org/operation_0346",
+                    "term": "Sequence similarity search",
+                }
             ],
             "input": [
                 {
-                    "data": {"uri": "http://edamontology.org/data_2044", "term": "Sequence"},
-                    "format": [{"uri": "http://edamontology.org/format_1929", "term": "FASTA"}],
+                    "data": {
+                        "uri": "http://edamontology.org/data_2044",
+                        "term": "Sequence",
+                    },
+                    "format": [
+                        {"uri": "http://edamontology.org/format_1929", "term": "FASTA"}
+                    ],
                 }
             ],
             "output": [
                 {
-                    "data": {"uri": "http://edamontology.org/data_0857", "term": "Sequence search results"},
+                    "data": {
+                        "uri": "http://edamontology.org/data_0857",
+                        "term": "Sequence search results",
+                    },
                     "format": [],
                 }
             ],
@@ -72,18 +87,32 @@ FULL_RAW = {
         }
     ],
     "publication": [
-        {"pmid": "2231712", "doi": "10.1126/science.1990", "pmcid": "", "type": "Primary", "note": ""},
-        {"pmid": "", "doi": "10.1093/nar/gkn723", "pmcid": "", "type": "Other", "note": ""},
+        {
+            "pmid": "2231712",
+            "doi": "10.1126/science.1990",
+            "pmcid": "",
+            "type": "Primary",
+            "note": "",
+        },
+        {
+            "pmid": "",
+            "doi": "10.1093/nar/gkn723",
+            "pmcid": "",
+            "type": "Other",
+            "note": "",
+        },
     ],
     "documentation": [
         {"url": "https://blast.ncbi.nlm.nih.gov/doc/blast-help/", "type": "General"}
     ],
     "download": [
-        {"url": "https://github.com/ncbi/blast/releases", "type": "Source code", "version": "2.14.0"}
+        {
+            "url": "https://github.com/ncbi/blast/releases",
+            "type": "Source code",
+            "version": "2.14.0",
+        }
     ],
-    "link": [
-        {"url": "https://github.com/ncbi/blast", "type": "Repository"}
-    ],
+    "link": [{"url": "https://github.com/ncbi/blast", "type": "Repository"}],
 }
 
 
@@ -111,8 +140,8 @@ def _http_error(code: int) -> urllib.error.HTTPError:
 # BioToolsClient._parse_tool
 # ---------------------------------------------------------------------------
 
-class TestBioToolsClientParseTool:
 
+class TestBioToolsClientParseTool:
     def test_minimal_raw(self):
         entry = BioToolsClient._parse_tool(MINIMAL_RAW)
         assert isinstance(entry, BioToolsToolEntry)
@@ -168,7 +197,13 @@ class TestBioToolsClientParseTool:
         assert entry.download[0]["type"] == "Source code"
 
     def test_topics_without_uri_skipped(self):
-        raw = {**MINIMAL_RAW, "topic": [{"uri": "", "term": "Empty"}, {"uri": "http://edamontology.org/topic_0080", "term": "Valid"}]}
+        raw = {
+            **MINIMAL_RAW,
+            "topic": [
+                {"uri": "", "term": "Empty"},
+                {"uri": "http://edamontology.org/topic_0080", "term": "Valid"},
+            ],
+        }
         entry = BioToolsClient._parse_tool(raw)
         assert len(entry.edam_topics) == 1
 
@@ -182,8 +217,8 @@ class TestBioToolsClientParseTool:
 # BioToolsClient._get / get_tool / search_by_name
 # ---------------------------------------------------------------------------
 
-class TestBioToolsClientHTTP:
 
+class TestBioToolsClientHTTP:
     def test_get_tool_success(self):
         with patch("urllib.request.urlopen", return_value=_mock_response(FULL_RAW)):
             client = BioToolsClient()
@@ -205,7 +240,9 @@ class TestBioToolsClientHTTP:
             assert exc_info.value.status_code == 500
 
     def test_get_tool_network_error(self):
-        with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("timeout")):
+        with patch(
+            "urllib.request.urlopen", side_effect=urllib.error.URLError("timeout")
+        ):
             client = BioToolsClient()
             with pytest.raises(BioToolsError, match="network error"):
                 client.get_tool("blast")
@@ -222,7 +259,9 @@ class TestBioToolsClientHTTP:
 
     def test_search_by_name_success(self):
         search_response = {"list": [FULL_RAW, MINIMAL_RAW]}
-        with patch("urllib.request.urlopen", return_value=_mock_response(search_response)):
+        with patch(
+            "urllib.request.urlopen", return_value=_mock_response(search_response)
+        ):
             client = BioToolsClient()
             results = client.search_by_name("blast")
         assert len(results) == 2
@@ -238,7 +277,9 @@ class TestBioToolsClientHTTP:
         # One bad entry (will raise during parse) + one good
         bad_entry = None  # will cause AttributeError when accessed
         search_response = {"list": [bad_entry, MINIMAL_RAW]}
-        with patch("urllib.request.urlopen", return_value=_mock_response(search_response)):
+        with patch(
+            "urllib.request.urlopen", return_value=_mock_response(search_response)
+        ):
             client = BioToolsClient()
             # Should skip the bad entry without raising
             results = client.search_by_name("blast")
@@ -277,9 +318,9 @@ class TestBioToolsClientHTTP:
 # sync_tool
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestSyncTool:
-
     def _mock_client(self, tool_raw=None):
         """Patch BioToolsClient.get_tool to return a parsed entry."""
         raw = tool_raw or FULL_RAW
@@ -291,7 +332,9 @@ class TestSyncTool:
     def test_creates_new_record(self):
         # Create submission WITHOUT biotools_url to avoid signal triggering sync
         submission = ServiceSubmissionFactory(biotools_url="")
-        with patch("apps.biotools.sync.BioToolsClient", return_value=self._mock_client()):
+        with patch(
+            "apps.biotools.sync.BioToolsClient", return_value=self._mock_client()
+        ):
             result = sync_tool("blast", submission_id=str(submission.pk))
 
         assert result.ok is True
@@ -300,21 +343,28 @@ class TestSyncTool:
         assert result.biotools_id == "blast"
 
         from apps.biotools.models import BioToolsRecord
+
         record = BioToolsRecord.objects.get(submission=submission)
         assert record.name == "BLAST"
         assert record.license == "Public domain"
 
     def test_updates_existing_record(self):
         from apps.biotools.models import BioToolsRecord
+
         # Create submission without URL to avoid duplicate record from signal
         submission = ServiceSubmissionFactory(biotools_url="")
         # Create the record first
-        with patch("apps.biotools.sync.BioToolsClient", return_value=self._mock_client()):
+        with patch(
+            "apps.biotools.sync.BioToolsClient", return_value=self._mock_client()
+        ):
             sync_tool("blast", submission_id=str(submission.pk))
 
         # Now call again — should update, not create
         updated_raw = {**FULL_RAW, "name": "BLAST Updated"}
-        with patch("apps.biotools.sync.BioToolsClient", return_value=self._mock_client(updated_raw)):
+        with patch(
+            "apps.biotools.sync.BioToolsClient",
+            return_value=self._mock_client(updated_raw),
+        ):
             result = sync_tool("blast", submission_id=str(submission.pk))
 
         assert result.ok is True
@@ -353,6 +403,7 @@ class TestSyncTool:
 
     def test_nonexistent_submission_id_returns_error(self):
         import uuid
+
         fake_id = str(uuid.uuid4())
         mock = MagicMock()
         mock.get_tool.return_value = BioToolsClient._parse_tool(FULL_RAW)
@@ -364,8 +415,11 @@ class TestSyncTool:
 
     def test_functions_created(self):
         from apps.biotools.models import BioToolsFunction
+
         submission = ServiceSubmissionFactory(biotools_url="")
-        with patch("apps.biotools.sync.BioToolsClient", return_value=self._mock_client()):
+        with patch(
+            "apps.biotools.sync.BioToolsClient", return_value=self._mock_client()
+        ):
             result = sync_tool("blast", submission_id=str(submission.pk))
 
         assert result.ok is True
@@ -377,20 +431,30 @@ class TestSyncTool:
 
     def test_functions_rebuilt_on_update(self):
         from apps.biotools.models import BioToolsFunction
+
         submission = ServiceSubmissionFactory(biotools_url="")
-        with patch("apps.biotools.sync.BioToolsClient", return_value=self._mock_client()):
+        with patch(
+            "apps.biotools.sync.BioToolsClient", return_value=self._mock_client()
+        ):
             sync_tool("blast", submission_id=str(submission.pk))
 
         # Second sync — functions should be deleted and recreated
-        with patch("apps.biotools.sync.BioToolsClient", return_value=self._mock_client()):
+        with patch(
+            "apps.biotools.sync.BioToolsClient", return_value=self._mock_client()
+        ):
             sync_tool("blast", submission_id=str(submission.pk))
 
-        assert BioToolsFunction.objects.filter(record__submission=submission).count() == 1
+        assert (
+            BioToolsFunction.objects.filter(record__submission=submission).count() == 1
+        )
 
     def test_sync_marks_success(self):
         from apps.biotools.models import BioToolsRecord
+
         submission = ServiceSubmissionFactory(biotools_url="")
-        with patch("apps.biotools.sync.BioToolsClient", return_value=self._mock_client()):
+        with patch(
+            "apps.biotools.sync.BioToolsClient", return_value=self._mock_client()
+        ):
             sync_tool("blast", submission_id=str(submission.pk))
 
         record = BioToolsRecord.objects.get(submission=submission)
@@ -400,9 +464,12 @@ class TestSyncTool:
 
     def test_not_found_marks_sync_error_on_existing_record(self):
         from apps.biotools.models import BioToolsRecord
+
         submission = ServiceSubmissionFactory(biotools_url="")
         # Create record first
-        with patch("apps.biotools.sync.BioToolsClient", return_value=self._mock_client()):
+        with patch(
+            "apps.biotools.sync.BioToolsClient", return_value=self._mock_client()
+        ):
             sync_tool("blast", submission_id=str(submission.pk))
 
         # Now simulate 404
@@ -420,18 +487,20 @@ class TestSyncTool:
 # Celery tasks
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestSyncBioToolsTask:
-
     def test_submission_not_found(self):
         import uuid
         from apps.biotools.tasks import sync_biotools_record
+
         result = sync_biotools_record(str(uuid.uuid4()))
         assert result["ok"] is False
         assert "not found" in result["error"]
 
     def test_no_biotools_url(self):
         from apps.biotools.tasks import sync_biotools_record
+
         submission = ServiceSubmissionFactory(biotools_url="")
         result = sync_biotools_record(str(submission.pk))
         assert result["ok"] is False
@@ -439,10 +508,14 @@ class TestSyncBioToolsTask:
 
     def test_extracts_id_from_url(self):
         from apps.biotools.tasks import sync_biotools_record
+
         # Use empty URL so signal doesn't pre-run; set it directly on the model
         from apps.submissions.models import ServiceSubmission
+
         submission = ServiceSubmissionFactory(biotools_url="")
-        ServiceSubmission.objects.filter(pk=submission.pk).update(biotools_url="https://bio.tools/blast")
+        ServiceSubmission.objects.filter(pk=submission.pk).update(
+            biotools_url="https://bio.tools/blast"
+        )
         submission.refresh_from_db()
 
         expected = SyncResult(ok=True, biotools_id="blast", created=True, error="")
@@ -457,34 +530,47 @@ class TestSyncBioToolsTask:
     def test_trailing_slash_stripped_from_url(self):
         from apps.biotools.tasks import sync_biotools_record
         from apps.submissions.models import ServiceSubmission
+
         submission = ServiceSubmissionFactory(biotools_url="")
-        ServiceSubmission.objects.filter(pk=submission.pk).update(biotools_url="https://bio.tools/blast/")
+        ServiceSubmission.objects.filter(pk=submission.pk).update(
+            biotools_url="https://bio.tools/blast/"
+        )
         submission.refresh_from_db()
 
         expected = SyncResult(ok=True, biotools_id="blast", created=True, error="")
         with patch("apps.biotools.sync.sync_tool", return_value=expected) as mock_sync:
             sync_biotools_record(str(submission.pk))
 
-        mock_sync.assert_called_once_with(biotools_id="blast", submission_id=str(submission.pk))
+        mock_sync.assert_called_once_with(
+            biotools_id="blast", submission_id=str(submission.pk)
+        )
 
     def test_returns_sync_result_as_dict(self):
         from apps.biotools.tasks import sync_biotools_record
         from apps.submissions.models import ServiceSubmission
+
         submission = ServiceSubmissionFactory(biotools_url="")
-        ServiceSubmission.objects.filter(pk=submission.pk).update(biotools_url="https://bio.tools/blast")
+        ServiceSubmission.objects.filter(pk=submission.pk).update(
+            biotools_url="https://bio.tools/blast"
+        )
         submission.refresh_from_db()
 
         expected = SyncResult(ok=True, biotools_id="blast", created=True, error="")
         with patch("apps.biotools.sync.sync_tool", return_value=expected):
             result = sync_biotools_record(str(submission.pk))
-        assert result == {"ok": True, "biotools_id": "blast", "created": True, "error": ""}
+        assert result == {
+            "ok": True,
+            "biotools_id": "blast",
+            "created": True,
+            "error": "",
+        }
 
 
 @pytest.mark.django_db
 class TestSyncAllBioToolsTask:
-
     def test_empty_records_completes(self):
         from apps.biotools.tasks import sync_all_biotools_records
+
         # No records — should complete without error
         sync_all_biotools_records()
 
@@ -506,7 +592,9 @@ class TestSyncAllBioToolsTask:
             )
 
         ok_result = SyncResult(ok=True, biotools_id="x", created=False, error="")
-        err_result = SyncResult(ok=False, biotools_id="x", created=False, error="API error")
+        err_result = SyncResult(
+            ok=False, biotools_id="x", created=False, error="API error"
+        )
 
         with patch("apps.biotools.sync.sync_tool", side_effect=[ok_result, err_result]):
             sync_all_biotools_records()  # Should complete without raising
@@ -515,6 +603,7 @@ class TestSyncAllBioToolsTask:
 # ---------------------------------------------------------------------------
 # Signals
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestBioToolsSignal:
@@ -529,6 +618,7 @@ class TestBioToolsSignal:
     def test_signal_creates_record_for_new_submission_with_url(self):
         """End-to-end: saving a submission with a biotools_url triggers sync."""
         from apps.biotools.models import BioToolsRecord
+
         entry = BioToolsClient._parse_tool(FULL_RAW)
         with patch("apps.biotools.client.BioToolsClient.get_tool", return_value=entry):
             sub = ServiceSubmissionFactory(biotools_url="https://bio.tools/blast")
@@ -540,6 +630,7 @@ class TestBioToolsSignal:
     def test_signal_skips_when_no_url(self):
         """Submission without biotools_url does not create a record."""
         from apps.biotools.models import BioToolsRecord
+
         sub = ServiceSubmissionFactory(biotools_url="")
         assert not BioToolsRecord.objects.filter(submission=sub).exists()
 
@@ -553,11 +644,12 @@ class TestBioToolsSignal:
         with patch("apps.biotools.client.BioToolsClient.get_tool", return_value=entry):
             sub = ServiceSubmissionFactory(biotools_url="https://bio.tools/blast")
 
-        record = BioToolsRecord.objects.get(submission=sub)
-        first_updated = record.updated_at
+        assert BioToolsRecord.objects.filter(submission=sub).exists()
 
         # Resave with same URL — should skip (record already exists, URL unchanged)
-        with patch("apps.biotools.client.BioToolsClient.get_tool", return_value=entry) as mock_get:
+        with patch(
+            "apps.biotools.client.BioToolsClient.get_tool", return_value=entry
+        ) as mock_get:
             post_save.send(ServiceSubmission, instance=sub, created=False)
             # get_tool should NOT have been called again
             mock_get.assert_not_called()
@@ -566,6 +658,7 @@ class TestBioToolsSignal:
 # ---------------------------------------------------------------------------
 # Views
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestBioToolsPrefillView:
@@ -601,7 +694,9 @@ class TestBioToolsPrefillView:
         entry = BioToolsClient._parse_tool(MINIMAL_RAW)
         with patch("apps.biotools.views.BioToolsClient") as MockClient:
             MockClient.return_value.get_tool.return_value = entry
-            request = self.rf.get("/biotools/prefill/", {"id": "https://bio.tools/blast"})
+            request = self.rf.get(
+                "/biotools/prefill/", {"id": "https://bio.tools/blast"}
+            )
             response = biotools_prefill(request)
             # Should have called get_tool with just "blast"
             MockClient.return_value.get_tool.assert_called_once_with("blast")
@@ -610,7 +705,9 @@ class TestBioToolsPrefillView:
 
     def test_not_found_returns_404(self):
         with patch("apps.biotools.views.BioToolsClient") as MockClient:
-            MockClient.return_value.get_tool.side_effect = BioToolsNotFound("not found", 404)
+            MockClient.return_value.get_tool.side_effect = BioToolsNotFound(
+                "not found", 404
+            )
             request = self.rf.get("/biotools/prefill/", {"id": "xyz"})
             response = biotools_prefill(request)
 
@@ -671,7 +768,10 @@ class TestBioToolsSearchView:
         assert data["results"] == []
 
     def test_success_returns_results(self):
-        entries = [BioToolsClient._parse_tool(FULL_RAW), BioToolsClient._parse_tool(MINIMAL_RAW)]
+        entries = [
+            BioToolsClient._parse_tool(FULL_RAW),
+            BioToolsClient._parse_tool(MINIMAL_RAW),
+        ]
         with patch("apps.biotools.views.BioToolsClient") as MockClient:
             MockClient.return_value.search_by_name.return_value = entries
             request = self.rf.get("/biotools/search/", {"q": "blast"})
@@ -685,7 +785,9 @@ class TestBioToolsSearchView:
 
     def test_api_error_returns_empty(self):
         with patch("apps.biotools.views.BioToolsClient") as MockClient:
-            MockClient.return_value.search_by_name.side_effect = BioToolsError("timeout")
+            MockClient.return_value.search_by_name.side_effect = BioToolsError(
+                "timeout"
+            )
             request = self.rf.get("/biotools/search/", {"q": "blast"})
             response = biotools_search(request)
 
@@ -709,11 +811,12 @@ class TestBioToolsSearchView:
 # BioToolsRecord model helpers
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestBioToolsRecordModel:
-
     def _make_record(self):
         from apps.biotools.models import BioToolsRecord
+
         # Use empty URL so signal doesn't create a record automatically
         sub = ServiceSubmissionFactory(biotools_url="")
         return BioToolsRecord.objects.create(
