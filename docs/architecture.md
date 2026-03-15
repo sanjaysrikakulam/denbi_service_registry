@@ -111,7 +111,7 @@ Celery workers connect to Redis and process three categories of tasks:
 | Default | bio.tools record sync | On demand (post_save signal) |
 | Beat (periodic) | `sync_all_biotools_records` — refresh all bio.tools records | Daily |
 | Beat (periodic) | `edam.sync` — refresh EDAM ontology terms | Monthly (30 days) |
-| Beat (periodic) | `cleanup_stale_drafts` — purge old incomplete submissions | Every 6 hours |
+| Beat (periodic) | `cleanup_stale_drafts` — purge old incomplete submissions | Daily (24 hours) |
 
 Celery beat runs in its own container alongside the worker container. The worker container's Docker healthcheck uses `celery inspect ping` via the Redis broker; beat has no inspection API so its healthcheck is disabled.
 

@@ -3,8 +3,7 @@
 # =============================================================================
 # Usage:
 #   cp .env.example .env          # Fill in secrets
-#   docker compose up -d
-#   docker compose exec web python manage.py migrate
+#   docker compose up -d          # migrations run automatically via entrypoint
 #   docker compose exec web python manage.py createsuperuser
 #
 # The web service uses Django's runserver with live code reloading.
@@ -48,6 +47,7 @@ services:
     command: celery -A config worker --loglevel=info --concurrency=2
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings
+      - SKIP_MIGRATE=true
     env_file:
       - .env
     volumes:
@@ -85,6 +85,7 @@ services:
         --schedule /var/run/celerybeat/celerybeat-schedule
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings
+      - SKIP_MIGRATE=true
     env_file:
       - .env
     volumes:

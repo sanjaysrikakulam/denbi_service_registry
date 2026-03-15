@@ -28,6 +28,9 @@
 # but must be in context for the COPY requirements/ step)
 !requirements/
 
+# Docker entrypoint script
+!scripts/
+
 # ── Within re-included directories, exclude test/dev artefacts ───────────────
 
 # Python cache — always stale from the host, rebuilt inside the image

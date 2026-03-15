@@ -54,24 +54,24 @@ A structured registration platform for de.NBI and ELIXIR-DE bioinformatics servi
     ```bash
     git clone https://github.com/deNBI/denbi_service_registry
     cd denbi_service_registry
-    cp .env.example .env      # edit SECRET_KEY, DB_PASSWORD, REDIS_PASSWORD
-    docker compose up -d
-    docker compose exec web python manage.py migrate
-    docker compose exec web python manage.py createsuperuser
+    cp .env.example .env      # set SECRET_KEY, DB_PASSWORD, REDIS_PASSWORD
+    make build                # builds images + starts stack + runs migrations
+    make superuser
     ```
 
-    App available at **http://localhost:8000** — EDAM terms are seeded automatically on first migrate.
+    App at **http://localhost:8000** — migrations and EDAM seeding run automatically on first start.
+    See [Development Setup](development.md) for the full local guide.
 
 === ":material-server: Production"
 
     ```bash
     cp .env.example .env      # configure all production values
     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-    docker compose exec web python manage.py migrate
     docker compose exec web python manage.py collectstatic --noinput
+    docker compose exec web python manage.py createsuperuser
     ```
 
-    See [Deployment](deployment.md) for the full production guide including TLS, nginx, and backups.
+    Migrations run automatically on container start. See [Deployment](deployment.md) for the full guide.
 
 ---
 

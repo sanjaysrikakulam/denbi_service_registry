@@ -1,15 +1,21 @@
 # =============================================================================
 # de.NBI Service Registry — Production Docker Compose Overrides
 # =============================================================================
-# Merge with base compose for production:
+# Merge with base compose for local staging / CI image validation:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
-# Production assumptions:
-#   - PostgreSQL is managed externally (set DB_HOST in .env to your server)
-#   - Nginx / TLS termination is handled by the host (not a container)
-#   - Redis runs in Docker (web, worker, beat all share the same stack)
+# IMPORTANT: The live production environment is managed by Ansible.
+# The Ansible template (roles/registry/templates/docker-compose.yml.j2) is
+# the authoritative production configuration. This overlay exists for:
+#   - Local staging runs that mirror production behaviour
+#   - CI validation of the production image path
 #
-# Only web, worker, beat, and redis services are managed here.
+# Key differences from development (docker-compose.yml):
+#   - PostgreSQL is external — no db service
+#   - Static files are baked into the image — no static_vol
+#   - Gunicorn replaces runserver
+#   - No source bind-mount (no live code reload)
+#   - SKIP_MIGRATE=true on worker and beat (only web runs migrations)
 # =============================================================================
 
 services:
@@ -24,21 +30,19 @@ services:
         --worker-class sync
         --timeout 60
         --keep-alive 5
-        --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-127.0.0.1}"
+        --worker-tmp-dir /dev/shm
         --access-logfile -
         --error-logfile -
     environment:
     ports:
-      # nginx is on a separate server — bind on all interfaces, restrict with
-      # firewall rules to only allow connections from the nginx server's IP.
       - "0.0.0.0:8000:8000"
-    volumes:
-      - static_vol:/app/staticfiles
+    volumes: []    # No bind-mount — static files are baked into the image
     restart: always
 
   worker:
     command: celery -A config worker --loglevel=info --concurrency=4
     environment:
+      - SKIP_MIGRATE=true    # Only web runs migrations to avoid startup race
     volumes: []
     restart: always
     healthcheck:
@@ -54,11 +58,11 @@ services:
         --loglevel=info
         --schedule /var/run/celerybeat/celerybeat-schedule
     environment:
+      - SKIP_MIGRATE=true    # Only web runs migrations to avoid startup race
     volumes: []
     restart: always
     healthcheck:
       disable: true
 
 volumes:
-  static_vol:
   celery_beat:

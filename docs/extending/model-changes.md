@@ -61,9 +61,12 @@ class ServiceSubmission(models.Model):
 
 **Step 2 — Generate the migration**
 
+Run locally (not in the container — the `django` container user has no write access to
+the bind-mounted source tree):
+
 ```bash
-docker compose exec web python manage.py makemigrations submissions \
-    --name add_data_access_type
+make makemigrations
+# or: python manage.py makemigrations submissions --name add_data_access_type
 # Creates: apps/submissions/migrations/0002_add_data_access_type.py
 ```
 
@@ -188,10 +191,11 @@ class ServiceUpdate(models.Model):
         return f"Update to {self.submission.service_name} at {self.created_at:%Y-%m-%d %H:%M}"
 ```
 
-**Step 2 — Generate migration**
+**Step 2 — Generate migration** (run locally, not in the container)
 
 ```bash
-python manage.py makemigrations submissions --name add_serviceupdate_model
+make makemigrations
+# or: python manage.py makemigrations submissions --name add_serviceupdate_model
 ```
 
 **Step 3 — Register in admin**
@@ -397,16 +401,23 @@ Run through this before every release that contains migrations.
 # 1. Pull new image
 docker compose pull web
 
-# 2. Apply migrations BEFORE starting new application code
-docker compose run --rm web python manage.py migrate
-
-# 3. Start new application containers
+# 2. Start new application containers
+#    The container entrypoint runs migrations automatically before serving traffic.
 docker compose up -d --no-deps web worker beat
 
-# 4. Verify
+# 3. Verify
 curl https://service-registry.bi.denbi.de/health/ready/
 docker compose logs web --tail 50
 ```
+
+!!! tip "Pre-applying migrations manually"
+    For zero-downtime rolling restarts or maintenance window deploys, you may still
+    apply migrations explicitly before starting containers:
+    ```bash
+    docker compose run --rm web python manage.py migrate
+    docker compose up -d --no-deps web worker beat
+    ```
+    The entrypoint detects that no pending migrations remain and proceeds immediately.
 
 ### After deploying
 

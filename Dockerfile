@@ -51,6 +51,8 @@ COPY --chown=django:django apps/ apps/
 COPY --chown=django:django templates/ templates/
 COPY --chown=django:django static/ static/
 COPY --chown=django:django manage.py manage.py
+COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Create static file and celery beat directories with correct ownership
 RUN mkdir -p staticfiles mediafiles /var/run/celerybeat \
@@ -80,6 +82,8 @@ RUN SECRET_KEY="${BUILD_SECRET_KEY}" \
     python manage.py collectstatic --noinput
 
 USER django
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # Expose Gunicorn port (Nginx proxies to this internally)
 EXPOSE 8000

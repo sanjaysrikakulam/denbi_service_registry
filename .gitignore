@@ -2,6 +2,7 @@
 # Secrets — never commit these
 # =============================================================================
 .env
+.env.ci
 .env.local
 .env.production
 .env.*.local

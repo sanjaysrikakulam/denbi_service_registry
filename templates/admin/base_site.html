@@ -196,6 +196,68 @@ ul.messagelist li code { display: block; margin-top: .35rem; padding: .3rem .6re
 /* ── Approve / Reject action buttons — make them visible in the actions bar ── */
 select[name=action] option { font-size: .875rem; }
 
+/* ── Form field sizing ─────────────────────────────────────────────────────── */
+/* Django's default .vLargeTextField CSS sets height:26em — makes empty
+   textareas enormous. Switch to rows-driven height instead, with resize. */
+#content-main textarea.vLargeTextField,
+#content-main textarea.vTextField {
+  height: auto !important;
+  min-height: 3rem;
+  resize: vertical;
+}
+/* URL fields — long enough for a real URL, but don't fill the whole row */
+#content-main input.vURLField {
+  max-width: 560px;
+  width: 100%;
+}
+/* Short char fields (names, codes) — tighter than the full-width default */
+#content-main input.vTextField {
+  max-width: 480px;
+  width: 100%;
+}
+/* EDAM / M2M filter_horizontal selector — cap at a comfortable height */
+.selector .selector-available select,
+.selector .selector-chosen select {
+  height: 10em !important;
+}
+/* Selector wrapper — max-width so it doesn't stretch full content width */
+.selector {
+  max-width: 760px;
+}
+/* Consistent min-height for ordinary <select> widgets (dropdowns) */
+#content-main select {
+  min-height: 2rem;
+}
+/* CheckboxSelectMultiple (service_categories) — horizontal wrapping pill list */
+#content-main ul.checkboxinput,
+.field-service_categories ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem .75rem;
+  padding: .4rem 0;
+  margin: 0;
+  list-style: none;
+}
+.field-service_categories ul li {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  background: var(--darkened-bg, #f8f8f8);
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 4px;
+  padding: .2rem .55rem;
+  font-size: .82rem;
+  white-space: nowrap;
+}
+.field-service_categories ul li input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+.field-service_categories ul li label {
+  margin: 0;
+  cursor: pointer;
+}
+
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
   #header.pinned, div.breadcrumbs.pinned { position: relative !important; }

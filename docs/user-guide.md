@@ -58,7 +58,7 @@ Enter comma-separated PMIDs (PubMed IDs, digits only) or DOIs (starting with `10
 PMIDs are required for ELIXIR impact assessment.
 
 ### Service Categories
-Select all that apply. Hold Ctrl (Windows/Linux) or Cmd (Mac) to select multiple.
+Select all that apply by checking the relevant boxes. Multiple selections are supported.
 
 ### Toolbox
 If your service is part of a de.NBI toolbox, select **Yes** and enter the toolbox name.

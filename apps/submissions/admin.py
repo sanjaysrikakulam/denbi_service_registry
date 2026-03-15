@@ -14,6 +14,7 @@ import json
 import logging
 
 from django.contrib import admin, messages
+from django.forms.widgets import CheckboxSelectMultiple
 from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
@@ -110,9 +111,37 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
     save_on_top = True
     list_per_page = 30
     list_select_related = ("service_center",)
+    # Two-panel filtered selector with search — needed for large option sets
+    filter_horizontal = ("responsible_pis", "edam_topics", "edam_operations")
 
     def get_queryset(self, request):
         return super().get_queryset(request).prefetch_related("api_keys")
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        # Override textarea row counts — Django's default vLargeTextField CSS
+        # sets height:26em which makes empty fields enormous. Setting rows here
+        # takes precedence once we disable the CSS height override in base_site.html.
+        textarea_rows = {
+            "service_description": 5,
+            "user_knowledge_required": 3,
+            "associated_partner_note": 2,
+            "publications_pmids": 2,
+            "keywords_uncited": 2,
+            "keywords_seo": 2,
+            "comments": 3,
+        }
+        for field_name, rows in textarea_rows.items():
+            if field_name in form.base_fields:
+                form.base_fields[field_name].widget.attrs.update({"rows": rows})
+        return form
+
+    def formfield_for_manytomanyfield(self, db_field, request, **kwargs):
+        # service_categories has a small fixed list — checkboxes are cleaner
+        # than a scrollable multi-select box and need no holding Ctrl to pick.
+        if db_field.name == "service_categories":
+            kwargs["widget"] = CheckboxSelectMultiple()
+        return super().formfield_for_manytomanyfield(db_field, request, **kwargs)
 
     inlines = [SubmissionAPIKeyInline]
 

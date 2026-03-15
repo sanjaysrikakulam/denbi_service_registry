@@ -42,8 +42,9 @@ INSTALLED_APPS = [
 ```
 
 ```bash
-# 4. Create initial migration
-docker compose exec web python manage.py makemigrations myapp --name initial
+# 4. Create initial migration (run locally — container user has no write access to source tree)
+python manage.py makemigrations myapp --name initial
+# or: make makemigrations
 ```
 
 ---

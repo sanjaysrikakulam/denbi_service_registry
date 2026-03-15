@@ -57,6 +57,9 @@ feature/xyz  →  main  →  tag v1.1.0  →  Docker image  →  staging  →  p
 
 ### GitHub Actions example
 
+Tests, linting, and audits run natively on the GitHub runner (no Docker needed for
+the test stage). The build job validates the Docker image separately.
+
 ```yaml
 # .github/workflows/ci.yml
 name: CI
@@ -72,35 +75,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/development.txt
+      - name: Install dependencies
+        run: pip install -r requirements/development.txt
       - name: Run tests
-        run: |
-          docker compose -f docker/docker-compose.ci.yml run --rm test
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: docker compose -f docker/docker-compose.ci.yml run --rm lint
-
-  audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: docker compose -f docker/docker-compose.ci.yml run --rm audit
-
-  build-and-push:
-    needs: [test, lint, audit]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build and push image
+        run: pytest tests/
         env:
-          IMAGE_TAG: ${{ github.ref_name }} # e.g. v1.1.0
+          DJANGO_SETTINGS_MODULE: config.settings_test
+          SECRET_KEY: ci-only-not-a-real-key
+          DB_PASSWORD: ci
+          REDIS_PASSWORD: ci
+      - name: Lint
+        run: |
+          ruff check apps/ config/ tests/
+          ruff format --check apps/ config/ tests/
+      - name: Audit
+        run: pip-audit -r requirements/production.txt
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker compose build
+      - name: Push image (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          IMAGE_TAG: ${{ github.ref_name }}
         run: |
           docker build -t ghcr.io/denbi/service-registry:${IMAGE_TAG} .
           docker push ghcr.io/denbi/service-registry:${IMAGE_TAG}
-          # Also tag as :latest
           docker tag ghcr.io/denbi/service-registry:${IMAGE_TAG} \
                      ghcr.io/denbi/service-registry:latest
           docker push ghcr.io/denbi/service-registry:latest
@@ -114,10 +123,18 @@ stages: [test, build, deploy-staging, deploy-production]
 
 test:
   stage: test
-  image: docker:24
-  services: [docker:24-dind]
+  image: python:3.12-slim
+  before_script:
+    - pip install -r requirements/development.txt
   script:
-    - docker compose -f docker/docker-compose.ci.yml run --rm test
+    - pytest tests/
+    - ruff check apps/ config/ tests/
+    - pip-audit -r requirements/production.txt
+  variables:
+    DJANGO_SETTINGS_MODULE: config.settings_test
+    SECRET_KEY: ci-only
+    DB_PASSWORD: ci
+    REDIS_PASSWORD: ci
 
 build:
   stage: build
@@ -165,18 +182,9 @@ cd "$COMPOSE_DIR"
 docker pull "ghcr.io/denbi/service-registry:${IMAGE_TAG}"
 docker tag  "ghcr.io/denbi/service-registry:${IMAGE_TAG}" denbi-registry:current
 
-# 2. Run migrations BEFORE switching traffic
-echo "--- Running migrations ---"
-$COMPOSE run --rm \
-  -e IMAGE_TAG="${IMAGE_TAG}" \
-  web python manage.py migrate --no-input
-
-# 3. Collect static files
-echo "--- Collecting static files ---"
-$COMPOSE run --rm web python manage.py collectstatic --no-input
-
-# 4. Rolling restart — start new containers before stopping old
-# (Docker Compose does this automatically with --no-deps)
+# 2. Rolling restart — start new containers before stopping old
+#    The container entrypoint runs migrations automatically on startup.
+#    Static files are baked into the image at build time — no collectstatic needed.
 echo "--- Restarting web, worker, beat ---"
 IMAGE_TAG="${IMAGE_TAG}" $COMPOSE up -d --no-deps web worker beat
 
@@ -237,10 +245,11 @@ sudo cp /var/www/denbi-registry/errors/upstream_down.html \
 # 2. Stop the application (keep DB and Redis running)
 docker compose stop web worker beat
 
-# 3. Apply the migration
+# 3. Apply the migration (use --run --rm to bypass the normal entrypoint auto-migrate
+#    so you can verify the migration manually before bringing traffic back)
 docker compose run --rm web python manage.py migrate
 
-# 4. Deploy the new image
+# 4. Deploy the new image (entrypoint will detect no pending migrations and proceed)
 IMAGE_TAG=v2.0.0 /opt/denbi/scripts/deploy.sh
 
 # 5. Remove maintenance page / re-enable proxy
@@ -320,7 +329,7 @@ Run through this on staging after every deployment, before promoting to producti
 - [ ] Submit a test registration with EDAM terms selected → confirm redirect to success page with API key
 - [ ] Copy the API key → go to `/update/` → enter key → form pre-populates including EDAM selections
 - [ ] Submit an update → confirm notification email received
-- [ ] `GET /api/docs/` loads Swagger UI
+- [ ] `GET /api/schema/swagger-ui/` loads Swagger UI
 - [ ] `GET /api/schema/` returns 200 with valid OpenAPI YAML
 - [ ] `POST /api/v1/submissions/` with valid JSON payload returns 201 with `api_key`
 - [ ] `GET /api/v1/submissions/{id}/` response includes `edam_topics`, `edam_operations`, and `biotoolsrecord` fields

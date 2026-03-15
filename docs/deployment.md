@@ -49,37 +49,49 @@ cp .env.example .env
 # Edit .env — set SECRET_KEY, DB_PASSWORD, REDIS_PASSWORD
 
 # 3. Build and start services
+#    Migrations run automatically on container start.
+#    On a fresh database, EDAM (~3,400 terms) is seeded automatically (~30 s).
 make build
-make up
+make dev
 
-# 4. Run database migrations
-make migrate
-
-# 5. Seed EDAM ontology terms (required for EDAM dropdowns in the form)
-docker compose exec web python manage.py sync_edam
-
-# 6. Create the first admin user
+# 4. Create the first admin user
 make superuser
 
-# 7. Visit http://localhost:8000
+# 5. Visit http://localhost:8000
 ```
 
 ---
 
 ## Production Deployment
 
+!!! note "Ansible-managed production"
+    The de.NBI production environment is deployed via Ansible. The Ansible role
+    (`roles/registry/templates/docker-compose.yml.j2`) generates the authoritative
+    production compose file and manages `.env` via vault. The steps below describe
+    the infrastructure assumptions — consult the Ansible role for the actual
+    deployment procedure.
+
+### Architecture
+
+| Component | How deployed |
+|---|---|
+| Django (Gunicorn) | Docker container — image from `crate.bi.denbi.de/denbi/denbi-service-registry:stable` |
+| Celery worker + beat | Docker containers — same image |
+| Redis | Docker container — broker + rate-limit cache |
+| PostgreSQL | External managed instance — not a Docker container |
+| Nginx + TLS | Host-managed — terminates HTTPS, proxies to Gunicorn on port 8000 |
+| `config/site.toml` | Bind-mounted from `/data/denbi-service-registry/config/site.toml` — rebranding requires no image rebuild |
+
 ### Step 1 — Configure environment
 
-On the production server, create `.env` with production values:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set at minimum:
+On the production server, create `.env` with production values (managed by Ansible vault):
 
 ```bash
 SECRET_KEY=<generate-a-long-random-key>
+DB_NAME=denbi_registry
+DB_USER=denbi
+DB_HOST=<external-postgres-host>
+DB_PORT=5432
 DB_PASSWORD=<strong-random-password>
 REDIS_PASSWORD=<strong-random-password>
 
@@ -94,57 +106,58 @@ EMAIL_HOST_PASSWORD=your-smtp-password
 EMAIL_FROM=no-reply@denbi.de
 
 ADMIN_URL_PREFIX=your-secret-admin-path
+FORWARDED_ALLOW_IPS=<nginx-server-ip>
 ```
 
-### Step 2 — TLS certificates
+### Step 2 — TLS and Nginx
 
-Place certificates at `nginx/ssl/fullchain.pem` and `nginx/ssl/privkey.pem`.
+TLS termination is handled by the host Nginx. Traffic flows:
 
-**Using Let's Encrypt (certbot):**
+```
+Internet → host Nginx (port 443, TLS) → Gunicorn (web:8000, Docker-internal)
+```
+
+Configure the host Nginx vhost to proxy to `localhost:8000`. See `nginx/host/` for
+a reference vhost configuration. Let's Encrypt is recommended for TLS:
 
 ```bash
-apt install certbot
 certbot certonly --standalone -d service-registry.bi.denbi.de
-cp /etc/letsencrypt/live/service-registry.bi.denbi.de/fullchain.pem nginx/ssl/
-cp /etc/letsencrypt/live/service-registry.bi.denbi.de/privkey.pem nginx/ssl/
 ```
 
-Set up automatic renewal:
+### Step 3 — Start production services
 
 ```bash
-certbot renew --pre-hook "docker compose stop nginx" --post-hook "docker compose start nginx"
+docker compose up -d
+docker compose exec web python manage.py createsuperuser
 ```
 
-### Step 3 — Update Nginx config
+!!! info "Migrations and EDAM seeding are automatic"
+    The `web` container entrypoint runs `manage.py migrate --noinput` before starting.
+    On a fresh database this also seeds the EDAM ontology (~3,400 terms, ~30 s).
+    Worker and beat containers set `SKIP_MIGRATE=true` so they do not race web on startup.
 
-Edit `nginx/nginx.conf` — update `server_name` to your hostname:
+!!! info "Static files are baked into the image"
+    `collectstatic` runs at Docker build time — no separate `collectstatic` step needed.
 
-```nginx
-server_name service-registry.bi.denbi.de;
-```
-
-### Step 4 — Start production services
-
-```bash
-make prod-up
-make prod-migrate
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web python manage.py createsuperuser
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web python manage.py sync_edam
-```
-
-### Step 5 — Collect static files
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web python manage.py collectstatic --noinput
-```
+!!! warning "SKIP_MIGRATE on worker and beat"
+    The Ansible-generated compose must set `SKIP_MIGRATE: "true"` in the environment
+    of `worker` and `beat` services. Without this, all three containers race to run
+    migrations simultaneously on a fresh database, causing a PostgreSQL `UniqueViolation`
+    error. The `web` service is the sole migration runner.
 
 ---
 
 ## Migrations
 
-Always run migrations before restarting after an update:
+The `web` container entrypoint runs `manage.py migrate --noinput` automatically before
+Gunicorn starts. Worker and beat containers skip this step (`SKIP_MIGRATE=true`) to
+avoid a race condition on fresh databases.
+
+To run migrations manually (e.g. to pre-apply before a rolling restart):
 
 ```bash
+docker compose exec web python manage.py migrate
+# or via Makefile (dev overlay):
 make prod-migrate
 ```
 
@@ -252,11 +265,19 @@ deployment works without any code changes.
 
 ## Updating the Application
 
+In the Ansible-managed production environment, Ansible handles image pulls and container
+restarts. For manual updates:
+
 ```bash
-git pull origin main
-docker compose build
-make prod-migrate
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps web worker beat
+# Pull the new image (Ansible sets image tag to :stable)
+docker compose pull
+
+# Restart containers — web entrypoint applies pending migrations automatically
+docker compose up -d --no-deps web worker beat
+
+# Verify
+curl http://localhost:8000/health/ready/
+docker compose logs web --tail 50
 ```
 
 ---
@@ -337,9 +358,10 @@ d = settings.DATABASES['default'].copy()
 d['PASSWORD'] = '***'
 print(d)
 "
-# Make sure DB_PASSWORD in .env matches the password the DB volume was initialised with
-# If unsure, wipe the volume and start fresh:
-#   make clean && make up
+# Production: DB_HOST points to the external PostgreSQL instance — verify DB_HOST,
+# DB_PORT, DB_USER, and DB_PASSWORD in .env match the external server's credentials.
+# Development: make sure DB_PASSWORD in .env matches the password the DB volume was
+# initialised with. If unsure, wipe the volume and start fresh: make nuke
 ```
 
 **Emails not sending:**

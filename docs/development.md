@@ -4,98 +4,147 @@ icon: material/code-braces
 
 # Development Setup
 
-## Prerequisites
+## Quick start
 
-- [Docker Engine](https://docs.docker.com/engine/install/) 24+
-- [Conda / Miniforge](https://github.com/conda-forge/miniforge) (for local Python work without Docker)
-- Git
+Everything you need to go from a fresh clone to a running local stack.
 
----
+### 1. Prerequisites
 
-## Option A: Docker Compose (recommended)
+| Tool | Minimum version | Install |
+|---|---|---|
+| Docker Engine + Compose | 24 / v2 | [docs.docker.com](https://docs.docker.com/engine/install/) |
+| Git | any | system package |
+| Conda / Miniforge | any | [github.com/conda-forge/miniforge](https://github.com/conda-forge/miniforge) — only needed for local Python work (tests, linting) without Docker |
 
-All services run in containers — nothing to install locally beyond Docker.
+### 2. Clone and configure
 
 ```bash
 git clone https://github.com/deNBI/denbi_service_registry
 cd denbi_service_registry
-
-# 1. Copy and edit environment
 cp .env.example .env
-# Set at minimum: SECRET_KEY, DB_PASSWORD, REDIS_PASSWORD
-
-# 2. Start all services (web, worker, beat, db, redis)
-docker compose up -d
-
-# 3. Run migrations
-docker compose exec web python manage.py migrate
-
-# 4. Create superuser
-docker compose exec web python manage.py createsuperuser
-
-# 5. (Optional) Force EDAM ontology sync — happens automatically on first migrate
-#    but you can re-run it manually any time
-docker compose exec web python manage.py sync_edam
 ```
 
-The app is at **http://localhost:8000** and the admin at **http://localhost:8000/admin-denbi/**.
-
-> **EDAM auto-seed**: On the very first `migrate` against a fresh database, EDAM terms
-> are downloaded and imported automatically (~30 s). The EDAM Topic and Operation
-> dropdowns will be populated without any manual step.
-
----
-
-## Option B: Conda environment
-
-Useful for running tests, linting, or working on the Python code without Docker.
+Open `.env` and set at minimum:
 
 ```bash
-# Create environment
-conda create -n denbi-registry python=3.12
-conda activate denbi-registry
-pip install -r requirements/base.txt -r requirements/development.txt
-
-# Point Django at test settings (SQLite in-memory, no Redis needed)
-export DJANGO_SETTINGS_MODULE=config.settings_test
+SECRET_KEY=any-long-random-string    # generate with: python -c "import secrets; print(secrets.token_hex(50))"
+DB_PASSWORD=devpassword
+REDIS_PASSWORD=devpassword
 ```
 
-The conda environment is named `denbi-registry` in this project.
+All other values in `.env.example` have safe defaults for local development.
+
+### 3. Build and start
+
+```bash
+make build    # builds Docker images from scratch (no cache)
+make dev      # starts web + worker + beat + db + redis
+```
+
+!!! info "Migrations run automatically"
+    The container entrypoint runs `manage.py migrate` before starting. On a fresh database this also auto-seeds the EDAM ontology (~3 400 terms, ~30 s). No manual migrate step needed.
+
+### 4. Create a superuser
+
+```bash
+make superuser
+```
+
+### 5. Access the app
+
+| URL | What |
+|---|---|
+| http://localhost:8000 | Public registration form |
+| http://localhost:8000/admin-denbi/ | Admin portal (superuser login) |
+| http://localhost:8000/api/schema/swagger-ui/ | Interactive API docs |
+| http://localhost:8000/api/schema/redoc/ | ReDoc API reference |
 
 ---
 
-## Make targets
+## Day-to-day workflow
 
-All common tasks are in the `Makefile`. Run `make help` for the full list.
+### Starting and stopping
+
+```bash
+make dev          # start stack (migrations run automatically on first start)
+make dev-down     # stop stack (volumes preserved — data survives)
+make logs         # tail all service logs
+```
+
+### After changing a model
+
+Migrations must be generated **locally** (not inside the container) because the container's non-root user cannot write migration files back to the bind-mounted source tree:
+
+```bash
+# 1. Generate the migration file (runs in your local conda env)
+make makemigrations
+
+# 2. Apply it to the running dev database
+make migrate
+```
+
+Commit the generated migration file alongside your model changes.
+
+### Full clean reset
+
+Wipes all containers, volumes, and data then rebuilds from scratch:
+
+```bash
+make nuke
+```
+
+Use this when you want a guaranteed clean state — e.g. after pulling migrations that conflict with your local DB, or when debugging a migration issue.
+
+### Running the test suite
+
+Tests use SQLite in-memory and a local-memory cache — no Docker or external services required:
+
+```bash
+make test          # pytest — must stay ≥ 80% coverage
+make test-cov      # pytest + HTML report → open htmlcov/index.html
+```
+
+Or activate the conda environment first and run pytest directly:
+
+```bash
+conda activate denbi-registry
+pytest tests/ -v --tb=short
+```
+
+### Linting and formatting
+
+```bash
+make lint          # ruff check + format check (read-only)
+make lint-fix      # auto-fix all fixable issues
+make audit         # pip-audit against production requirements
+make typecheck     # mypy
+```
+
+---
+
+## Make targets reference
 
 **Development**
 
 | Target | What it does |
 |---|---|
+| `make build` | Rebuild all Docker images with `--no-cache` |
 | `make dev` | Start full dev stack (web + worker + beat + db + redis) |
-| `make dev-down` | Stop the dev stack |
-| `make build` | Build / rebuild Docker images |
-| `make logs` | Tail dev stack logs |
-| `make migrate` | Run Django migrations in the `web` container |
+| `make dev-down` | Stop the dev stack (data preserved) |
+| `make logs` | Tail all dev stack logs |
+| `make migrate` | Run pending migrations in the running `web` container |
+| `make makemigrations` | Generate new migration files locally (needed after model changes) |
 | `make superuser` | Create a Django superuser |
 | `make shell` | Open Django `shell_plus` in the `web` container |
-| `make collectstatic` | Collect static files into the container's `/static/` directory |
+| `make collectstatic` | Collect static files into the container |
 
-**Testing**
-
-| Target | What it does |
-|---|---|
-| `make test` | Run pytest with SQLite in-memory (no Docker, no external services) |
-| `make test-cov` | Run tests and generate HTML coverage report (`htmlcov/`) |
-| `make test-docker` | Run tests inside Docker (via `docker/docker-compose.ci.yml`) |
-| `make lint-docker` | Run ruff inside Docker |
-| `make audit-docker` | Run `pip-audit` inside Docker |
-
-**Code quality** (requires `pip install -r requirements/development.txt`)
+**Testing and quality** (requires `pip install -r requirements/development.txt`)
 
 | Target | What it does |
 |---|---|
-| `make lint` | Run ruff check + format check |
+| `make test` | pytest with SQLite in-memory — no Docker needed |
+| `make test-cov` | pytest + HTML coverage report (`htmlcov/`) |
+| `make lint` | ruff check + format check |
 | `make lint-fix` | Auto-fix ruff lint and formatting issues |
 | `make audit` | `pip-audit` against production requirements |
 | `make typecheck` | Run mypy type checker |
@@ -120,7 +169,29 @@ All common tasks are in the `Makefile`. Run `make help` for the full list.
 
 | Target | What it does |
 |---|---|
-| `make clean` | Remove all containers and volumes — **deletes all data**, prompts for confirmation |
+| `make clean` | Stop containers + remove all volumes — **permanently deletes DB data**, prompts for confirmation |
+| `make nuke` | Full reset: `clean` → `build` → `dev` → wait for migrations — one command to a fresh working stack |
+
+---
+
+## Conda environment (for local Python work)
+
+The conda environment is used for tests, linting, and generating migrations — tasks where you want a fast feedback loop without Docker.
+
+```bash
+conda create -n denbi-registry python=3.12
+conda activate denbi-registry
+pip install -r requirements/development.txt
+```
+
+Point Django at the test settings for anything that needs Django but not a real database:
+
+```bash
+export DJANGO_SETTINGS_MODULE=config.settings_test
+export SECRET_KEY=any-value
+export DB_PASSWORD=any-value
+export REDIS_PASSWORD=any-value
+```
 
 ---
 
@@ -135,55 +206,19 @@ denbi_service_registry/
 │   ├── registry/     — Reference data (PIs, categories, service centres)
 │   └── submissions/  — Core model, registration form, views, admin
 ├── config/
-│   ├── settings.py   — Main Django settings
-│   ├── settings_test.py — Test overrides (SQLite, no Redis)
-│   ├── celery.py     — Celery app definition
-│   └── site.toml     — Non-secret site configuration
-├── docker/           — Docker Compose overlays (prod, CI)
+│   ├── settings.py       — Main Django settings
+│   ├── settings_test.py  — Test overrides (SQLite, no Redis)
+│   ├── celery.py         — Celery app definition
+│   └── site.toml         — Non-secret site configuration
 ├── docs/             — MkDocs documentation source
-├── nginx/host/       — Host nginx vhost configuration (Ansible-managed)
+├── nginx/host/       — Host nginx vhost configuration
 ├── requirements/     — base.txt, production.txt, development.txt
-├── static/           — Vendored static assets (Bootstrap, HTMX, Tom-Select, swagger-ui, redoc, favicon)
+├── scripts/
+│   └── entrypoint.sh — Docker entrypoint: runs migrate before CMD
+├── static/           — Vendored static assets (Bootstrap, HTMX, Tom-Select, swagger-ui, redoc)
 ├── templates/        — Django HTML templates
 └── tests/            — pytest test suite
 ```
-
----
-
-## Running tests
-
-```bash
-# With conda environment active:
-pytest tests/
-
-# Or via make (uses conda env automatically if configured):
-make test
-
-# With HTML coverage report:
-make test-cov
-# then open htmlcov/index.html
-```
-
-Tests use SQLite in-memory and local-memory cache — no PostgreSQL or Redis required.
-
-See [Testing](testing.md) for writing new tests.
-
----
-
-## Code quality
-
-```bash
-# Check for linting issues
-make lint
-
-# Auto-fix
-make lint-fix
-
-# Type checking
-make typecheck
-```
-
-The CI pipeline runs `lint` and `test` on every push. Both must pass before merging.
 
 ---
 
@@ -204,77 +239,69 @@ All third-party CSS and JavaScript is downloaded once and committed to `static/`
 
 ### Updating a library
 
-**Bootstrap** (`static/css/bootstrap.min.css`, `static/js/bootstrap.bundle.min.js`)
+=== "Bootstrap"
 
-```bash
-VERSION=5.3.4
-BASE=https://cdn.jsdelivr.net/npm/bootstrap@${VERSION}/dist
-curl -sSfL ${BASE}/css/bootstrap.min.css -o static/css/bootstrap.min.css
-curl -sSfL ${BASE}/js/bootstrap.bundle.min.js -o static/js/bootstrap.bundle.min.js
-```
+    ```bash
+    VERSION=5.3.4
+    BASE=https://cdn.jsdelivr.net/npm/bootstrap@${VERSION}/dist
+    curl -sSfL ${BASE}/css/bootstrap.min.css -o static/css/bootstrap.min.css
+    curl -sSfL ${BASE}/js/bootstrap.bundle.min.js -o static/js/bootstrap.bundle.min.js
+    ```
 
-**HTMX** (`static/js/htmx.min.js`)
+=== "HTMX"
 
-```bash
-VERSION=1.9.13
-curl -sSfL https://unpkg.com/htmx.org@${VERSION}/dist/htmx.min.js -o static/js/htmx.min.js
-```
+    ```bash
+    VERSION=1.9.13
+    curl -sSfL https://unpkg.com/htmx.org@${VERSION}/dist/htmx.min.js -o static/js/htmx.min.js
+    ```
 
-**Tom-Select** (`static/css/tom-select.bootstrap5.min.css`, `static/js/tom-select.complete.min.js`)
+=== "Tom-Select"
 
-```bash
-VERSION=2.4.1
-BASE=https://cdn.jsdelivr.net/npm/tom-select@${VERSION}/dist
-curl -sSfL ${BASE}/css/tom-select.bootstrap5.min.css -o static/css/tom-select.bootstrap5.min.css
-curl -sSfL ${BASE}/js/tom-select.complete.min.js -o static/js/tom-select.complete.min.js
-```
+    ```bash
+    VERSION=2.4.1
+    BASE=https://cdn.jsdelivr.net/npm/tom-select@${VERSION}/dist
+    curl -sSfL ${BASE}/css/tom-select.bootstrap5.min.css -o static/css/tom-select.bootstrap5.min.css
+    curl -sSfL ${BASE}/js/tom-select.complete.min.js -o static/js/tom-select.complete.min.js
+    ```
 
-Tom-Select is loaded via Django's widget `Media` class in `apps/submissions/widgets.py` — no template change needed when upgrading.
+=== "swagger-ui-dist"
 
-**swagger-ui-dist** (`static/swagger-ui/`)
+    ```bash
+    VERSION=5.18.3
+    BASE=https://cdn.jsdelivr.net/npm/swagger-ui-dist@${VERSION}
+    for f in swagger-ui.css swagger-ui-bundle.js swagger-ui-standalone-preset.js favicon-32x32.png; do
+        curl -sSfL ${BASE}/${f} -o static/swagger-ui/${f}
+    done
+    ```
 
-```bash
-VERSION=5.18.3
-BASE=https://cdn.jsdelivr.net/npm/swagger-ui-dist@${VERSION}
-for f in swagger-ui.css swagger-ui-bundle.js swagger-ui-standalone-preset.js favicon-32x32.png; do
-    curl -sSfL ${BASE}/${f} -o static/swagger-ui/${f}
-done
-```
+    Then update the version comment in `config/settings.py`.
 
-Then update the version comment in `config/settings.py`:
-```python
-# swagger-ui-dist 5.18.3, redoc 2.2.0 — vendored in static/swagger-ui/ and static/redoc/
-"SWAGGER_UI_DIST": "/static/swagger-ui",
-```
+=== "ReDoc"
 
-**ReDoc** (`static/redoc/bundles/redoc.standalone.js`)
-
-```bash
-VERSION=2.2.0
-curl -sSfL https://cdn.jsdelivr.net/npm/redoc@${VERSION}/bundles/redoc.standalone.js \
-    -o static/redoc/bundles/redoc.standalone.js
-```
+    ```bash
+    VERSION=2.2.0
+    curl -sSfL https://cdn.jsdelivr.net/npm/redoc@${VERSION}/bundles/redoc.standalone.js \
+        -o static/redoc/bundles/redoc.standalone.js
+    ```
 
 ### Can I use an external URL instead of vendoring?
 
-It depends on the asset type:
-
-| Asset type | External URL acceptable? | Notes |
+| Asset type | External URL OK? | Notes |
 |---|---|---|
-| **Logo** (`logo_url` in `site.toml`) | Yes | The CSP `img-src` directive is built dynamically from this URL via `_csp_img_origins()` in `settings.py`. Set it to any `https://` URL and CSP updates automatically. |
-| **Favicon** (`favicon_url` in `site.toml`) | Yes | Same dynamic CSP behaviour as logo. |
-| **JS/CSS frameworks** (Bootstrap, HTMX, Tom-Select) | **No** | Would make external network requests from the user's browser, violating GDPR. Must be vendored. |
-| **Swagger UI / ReDoc** | **No** | drf-spectacular's `SWAGGER_UI_DIST` setting defaults to jsDelivr. We override it to `/static/swagger-ui`. Do not revert to a CDN URL. |
+| **Logo** (`logo_url` in `site.toml`) | Yes | CSP `img-src` is built dynamically from this URL |
+| **Favicon** (`favicon_url` in `site.toml`) | Yes | Same dynamic CSP behaviour |
+| **JS/CSS frameworks** | **No** | Would make browser requests to third-party CDNs — GDPR violation |
+| **Swagger UI / ReDoc** | **No** | drf-spectacular defaults to jsDelivr; we override to `/static/`. Do not revert |
 
 ### Checking for CDN leakage
 
-Use browser DevTools → Network tab, filter by third-party requests. All requests should resolve to `localhost` (dev) or your own domain (prod). Alternatively, check the CSP report — any CDN request will violate `default-src 'self'` and show up in the browser console as a blocked request.
+Open browser DevTools → Network tab. All requests should resolve to `localhost` in dev or your own domain in prod. Any CDN request will also violate `default-src 'self'` and appear as a blocked request in the browser console.
 
 ---
 
 ## Adding a feature
 
 1. Create a branch: `git checkout -b feature/my-feature`
-2. Make changes, add tests
-3. `make lint-fix && make test` — ensure lint and coverage pass
+2. Make changes; add or update tests
+3. `make lint-fix && make test` — lint and coverage must pass
 4. Open a pull request against `main`
