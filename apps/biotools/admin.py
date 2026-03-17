@@ -65,6 +65,7 @@ class BioToolsRecordAdmin(admin.ModelAdmin):
     )
     list_filter = ("maturity", "cost")
     search_fields = ("biotools_id", "name", "description")
+    list_select_related = ("submission",)
     readonly_fields = (
         "id",
         "submission",

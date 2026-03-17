@@ -221,10 +221,12 @@ class EditView(View):
         if not submission_id or not key_id:
             return None
         try:
-            # Verify the key is still active
-            SubmissionAPIKey.objects.get(id=key_id, is_active=True)
-            return ServiceSubmission.objects.get(id=submission_id)
-        except (SubmissionAPIKey.DoesNotExist, ServiceSubmission.DoesNotExist):
+            # Single query: verify key is active and fetch its submission in one JOIN
+            key = SubmissionAPIKey.objects.select_related("submission").get(
+                id=key_id, is_active=True
+            )
+            return key.submission
+        except SubmissionAPIKey.DoesNotExist:
             return None
 
     def get(self, request: HttpRequest) -> HttpResponse:

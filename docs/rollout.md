@@ -329,7 +329,7 @@ Run through this on staging after every deployment, before promoting to producti
 - [ ] Submit a test registration with EDAM terms selected → confirm redirect to success page with API key
 - [ ] Copy the API key → go to `/update/` → enter key → form pre-populates including EDAM selections
 - [ ] Submit an update → confirm notification email received
-- [ ] `GET /api/schema/swagger-ui/` loads Swagger UI
+- [ ] `GET /api/docs/` loads Swagger UI
 - [ ] `GET /api/schema/` returns 200 with valid OpenAPI YAML
 - [ ] `POST /api/v1/submissions/` with valid JSON payload returns 201 with `api_key`
 - [ ] `GET /api/v1/submissions/{id}/` response includes `edam_topics`, `edam_operations`, and `biotoolsrecord` fields

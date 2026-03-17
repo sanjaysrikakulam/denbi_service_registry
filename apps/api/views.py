@@ -30,9 +30,9 @@ from apps.submissions.tasks import send_submission_notification
 from .authentication import SubmissionAPIKeyAuthentication
 from .permissions import IsAdminOrOwner, IsAdminTokenUser
 from .serializers import (
-    PrincipalInvestigatorSerializer,
-    ServiceCategorySerializer,
-    ServiceCenterSerializer,
+    PrincipalInvestigatorAdminSerializer,
+    ServiceCategoryAdminSerializer,
+    ServiceCenterAdminSerializer,
     SubmissionCreateSerializer,
     SubmissionDetailSerializer,
     SubmissionListSerializer,
@@ -87,8 +87,14 @@ class SubmissionViewSet(
     """
 
     queryset = (
-        ServiceSubmission.objects.select_related("service_center")
-        .prefetch_related("service_categories", "responsible_pis")
+        ServiceSubmission.objects.select_related("service_center", "biotoolsrecord")
+        .prefetch_related(
+            "service_categories",
+            "responsible_pis",
+            "edam_topics",
+            "edam_operations",
+            "biotoolsrecord__functions",
+        )
         .order_by("-submitted_at")
     )
 
@@ -304,43 +310,133 @@ class SubmissionViewSet(
 
 
 # ---------------------------------------------------------------------------
-# Reference data viewsets (admin-only, read-only)
+# Reference data viewsets (admin-only, full CRUD)
 # ---------------------------------------------------------------------------
 
 
-@extend_schema(tags=["Reference Data"])
-class ServiceCategoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """List active service categories. Requires admin token."""
+def _active_filter(qs, params):
+    """Apply optional ?is_active=true|false filter to a queryset."""
+    value = params.get("is_active")
+    if value == "true":
+        return qs.filter(is_active=True)
+    if value == "false":
+        return qs.filter(is_active=False)
+    return qs
 
-    queryset = ServiceCategory.objects.filter(is_active=True)
-    serializer_class = ServiceCategorySerializer
+
+_is_active_param = OpenApiParameter(
+    "is_active",
+    str,
+    description="Filter by active status. `true` = active only, `false` = inactive only. Omit to return all.",
+)
+
+
+@extend_schema(tags=["Reference Data"], parameters=[_is_active_param])
+class ServiceCategoryViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for service categories. All operations require admin token.
+
+    | Method | URL | Description |
+    |--------|-----|-------------|
+    | GET | /api/v1/categories/ | List all (active + inactive) |
+    | POST | /api/v1/categories/ | Create a new category |
+    | GET | /api/v1/categories/{id}/ | Retrieve a category |
+    | PATCH | /api/v1/categories/{id}/ | Partial update |
+    | PUT | /api/v1/categories/{id}/ | Full update |
+    | DELETE | /api/v1/categories/{id}/ | Soft-delete (sets is_active=False) |
+
+    **Filter:** `?is_active=true|false`
+    """
+
+    serializer_class = ServiceCategoryAdminSerializer
     permission_classes = [IsAdminTokenUser]
     authentication_classes = [TokenAuthentication]
     pagination_class = None
 
+    def get_queryset(self):
+        return _active_filter(
+            ServiceCategory.objects.all().order_by("name"),
+            self.request.query_params,
+        )
 
-@extend_schema(tags=["Reference Data"])
-class ServiceCenterViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """List active de.NBI service centres. Requires admin token."""
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save(update_fields=["is_active"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-    queryset = ServiceCenter.objects.filter(is_active=True)
-    serializer_class = ServiceCenterSerializer
+
+@extend_schema(tags=["Reference Data"], parameters=[_is_active_param])
+class ServiceCenterViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for de.NBI service centres. All operations require admin token.
+
+    | Method | URL | Description |
+    |--------|-----|-------------|
+    | GET | /api/v1/service-centers/ | List all (active + inactive) |
+    | POST | /api/v1/service-centers/ | Create a new centre |
+    | GET | /api/v1/service-centers/{id}/ | Retrieve a centre |
+    | PATCH | /api/v1/service-centers/{id}/ | Partial update |
+    | PUT | /api/v1/service-centers/{id}/ | Full update |
+    | DELETE | /api/v1/service-centers/{id}/ | Soft-delete (sets is_active=False) |
+
+    **Filter:** `?is_active=true|false`
+    """
+
+    serializer_class = ServiceCenterAdminSerializer
     permission_classes = [IsAdminTokenUser]
     authentication_classes = [TokenAuthentication]
     pagination_class = None
 
+    def get_queryset(self):
+        return _active_filter(
+            ServiceCenter.objects.all().order_by("full_name"),
+            self.request.query_params,
+        )
 
-@extend_schema(tags=["Reference Data"])
-class PrincipalInvestigatorViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """List active PIs in the de.NBI network. Requires admin token."""
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save(update_fields=["is_active"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-    queryset = PrincipalInvestigator.objects.filter(is_active=True).order_by(
-        "last_name"
-    )
-    serializer_class = PrincipalInvestigatorSerializer
+
+@extend_schema(tags=["Reference Data"], parameters=[_is_active_param])
+class PrincipalInvestigatorViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for principal investigators. All operations require admin token.
+
+    | Method | URL | Description |
+    |--------|-----|-------------|
+    | GET | /api/v1/pis/ | List all (active + inactive) |
+    | POST | /api/v1/pis/ | Create a new PI |
+    | GET | /api/v1/pis/{id}/ | Retrieve a PI |
+    | PATCH | /api/v1/pis/{id}/ | Partial update |
+    | PUT | /api/v1/pis/{id}/ | Full update |
+    | DELETE | /api/v1/pis/{id}/ | Soft-delete (sets is_active=False) |
+
+    **Filter:** `?is_active=true|false`
+
+    **Note:** The `email` field is for internal admin use — it is never included
+    in submission responses where PIs are embedded.
+    """
+
+    serializer_class = PrincipalInvestigatorAdminSerializer
     permission_classes = [IsAdminTokenUser]
     authentication_classes = [TokenAuthentication]
     pagination_class = None
+
+    def get_queryset(self):
+        return _active_filter(
+            PrincipalInvestigator.objects.all().order_by("last_name", "first_name"),
+            self.request.query_params,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save(update_fields=["is_active"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # ---------------------------------------------------------------------------

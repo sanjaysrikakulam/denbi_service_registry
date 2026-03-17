@@ -194,6 +194,7 @@ class ServiceSubmission(models.Model):
 
     register_as_elixir = models.BooleanField(
         default=False,
+        db_index=True,
         help_text="Whether to also register this service as an ELIXIR-DE service.",
     )
 
@@ -209,6 +210,7 @@ class ServiceSubmission(models.Model):
         ),
     )
     year_established = models.IntegerField(
+        db_index=True,
         help_text="Year the service was first established (YYYY).",
     )
     service_categories = models.ManyToManyField(
@@ -401,6 +403,8 @@ class ServiceSubmission(models.Model):
             models.Index(fields=["status"]),
             models.Index(fields=["submitted_at"]),
             models.Index(fields=["service_center"]),
+            # Compound index for the admin list view default sort + status filter
+            models.Index(fields=["-submitted_at", "status"]),
         ]
 
     def __str__(self) -> str:

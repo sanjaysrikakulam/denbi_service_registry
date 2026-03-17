@@ -56,8 +56,8 @@ make superuser
 |---|---|
 | http://localhost:8000 | Public registration form |
 | http://localhost:8000/admin-denbi/ | Admin portal (superuser login) |
-| http://localhost:8000/api/schema/swagger-ui/ | Interactive API docs |
-| http://localhost:8000/api/schema/redoc/ | ReDoc API reference |
+| http://localhost:8000/api/docs/ | Interactive API docs (Swagger UI) |
+| http://localhost:8000/api/redoc/ | ReDoc API reference |
 
 ---
 

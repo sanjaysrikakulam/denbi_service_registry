@@ -47,6 +47,54 @@ class PrincipalInvestigatorSerializer(serializers.ModelSerializer):
 
 
 # ---------------------------------------------------------------------------
+# Admin CRUD serializers — extend read-only counterparts with write fields.
+# Used exclusively by the admin-authenticated CRUD viewsets; never embedded
+# inside submission responses (which use the compact serializers above).
+# ---------------------------------------------------------------------------
+
+
+class ServiceCategoryAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceCategory
+        fields = ["id", "name", "is_active"]
+        read_only_fields = ["id"]
+
+
+class ServiceCenterAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceCenter
+        fields = ["id", "short_name", "full_name", "website", "is_active"]
+        read_only_fields = ["id"]
+
+
+class PrincipalInvestigatorAdminSerializer(serializers.ModelSerializer):
+    """
+    Full PI representation for admin CRUD.
+    Includes email (not publicly visible) and status flags.
+    """
+
+    display_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PrincipalInvestigator
+        fields = [
+            "id",
+            "last_name",
+            "first_name",
+            "display_name",
+            "email",
+            "institute",
+            "orcid",
+            "is_active",
+            "is_associated_partner",
+        ]
+        read_only_fields = ["id", "display_name"]
+
+    def get_display_name(self, obj) -> str:
+        return obj.display_name
+
+
+# ---------------------------------------------------------------------------
 # Submission serializers
 # ---------------------------------------------------------------------------
 
@@ -377,12 +425,21 @@ class BioToolsRecordSerializer(serializers.ModelSerializer):
         from apps.edam.models import EdamTerm
         from urllib.parse import urlparse
 
+        uris = obj.edam_topic_uris
+        if not uris:
+            return []
+
+        # Single query for all URIs — avoids one query per URI in a loop
+        terms_by_uri = {
+            t.uri: t for t in EdamTerm.objects.filter(uri__in=uris)
+        }
+
         resolved = []
-        for uri in obj.edam_topic_uris:
-            try:
-                term = EdamTerm.objects.get(uri=uri)
+        for uri in uris:
+            term = terms_by_uri.get(uri)
+            if term:
                 resolved.append(EdamTermSerializer(term).data)
-            except EdamTerm.DoesNotExist:
+            else:
                 # URI exists in bio.tools but not yet in our local EDAM snapshot
                 path = urlparse(uri).path
                 accession = path.split("/")[-1] if "/" in path else ""
@@ -434,4 +491,5 @@ class BioToolsRecordSummarySerializer(serializers.ModelSerializer):
         return len(obj.edam_topic_uris)
 
     def get_function_count(self, obj) -> int:
-        return obj.functions.count()
+        # Use len() so a prefetched functions cache is not bypassed
+        return len(obj.functions.all())

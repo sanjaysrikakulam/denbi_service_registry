@@ -119,6 +119,66 @@ Celery beat runs in its own container alongside the worker container. The worker
 
 ---
 
+## Database query strategy
+
+All list-producing querysets are tuned to avoid N+1 queries. The patterns used throughout the codebase are:
+
+### `SubmissionViewSet` base queryset
+
+```python
+ServiceSubmission.objects
+    .select_related("service_center", "biotoolsrecord")
+    .prefetch_related(
+        "service_categories",
+        "responsible_pis",
+        "edam_topics",
+        "edam_operations",
+        "biotoolsrecord__functions",
+    )
+    .order_by("-submitted_at")
+```
+
+`select_related` resolves FK/OneToOne fields in a single JOIN.
+`prefetch_related` resolves M2M and reverse FK relations in bulk follow-up queries (one per relation, not one per row).
+
+### Admin list views
+
+All admin classes set `list_select_related` for any FK accessed in `list_display`.
+Admin actions that iterate querysets always call `select_related` / `prefetch_related` directly on the passed queryset rather than relying on the class-level queryset.
+
+### Prefetch cache rules
+
+When a relation is prefetched, accessing it with `.all()` hits the in-memory cache.
+Calling `.filter()`, `.count()`, or `.values_list()` on a prefetched relation **bypasses the cache** and issues a new query. The codebase consistently uses:
+
+- `len(obj.relation.all())` instead of `.count()`
+- `[obj.field for obj in relation.all()]` instead of `.values_list(...)`
+- Python `sum()` / list comprehensions on prefetched data
+
+### Batch lookups over loops
+
+Any serializer or task that resolves a list of identifiers against the database uses a single `filter(field__in=ids)` query and builds a dict for O(1) lookups, rather than calling `.get()` in a loop:
+
+```python
+terms_by_uri = {t.uri: t for t in EdamTerm.objects.filter(uri__in=uris)}
+```
+
+### Indexes
+
+| Field | Reason |
+|---|---|
+| `ServiceSubmission.status` | `list_filter` in admin; `?status=` API filter |
+| `ServiceSubmission.submitted_at` | Default ordering |
+| `ServiceSubmission.service_center` | FK lookup + `list_filter` |
+| `ServiceSubmission.register_as_elixir` | `?register_as_elixir=` API filter |
+| `ServiceSubmission.year_established` | `?year_established=` API filter |
+| Compound `(-submitted_at, status)` | Admin default list view: sort + status filter together |
+| `BioToolsRecord.biotools_id` | Primary lookup key for the bio.tools API endpoint |
+| `EdamTerm.uri`, `.accession`, `.branch`, `.label` | EDAM endpoint filters and lookups |
+| `EdamTerm (branch, is_obsolete)` | Compound — form queryset always filters both |
+
+---
+
 ## Security design
 
 | Control | Implementation |

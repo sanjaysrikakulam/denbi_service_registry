@@ -391,10 +391,10 @@ class TestReferenceDataEndpoints:
         resp = api_client.get("/api/v1/categories/")
         assert resp.status_code in (401, 403)
 
-    def test_categories_returns_active_only(self, staff_client):
+    def test_categories_active_filter(self, staff_client):
         ServiceCategoryFactory(name="Active Cat", is_active=True)
         ServiceCategoryFactory(name="Inactive Cat", is_active=False)
-        resp = staff_client.get("/api/v1/categories/")
+        resp = staff_client.get("/api/v1/categories/?is_active=true")
         names = [c["name"] for c in resp.json()]
         assert "Active Cat" in names
         assert "Inactive Cat" not in names
@@ -407,10 +407,10 @@ class TestReferenceDataEndpoints:
         resp = api_client.get("/api/v1/pis/")
         assert resp.status_code in (401, 403)
 
-    def test_pis_returns_active_only(self, staff_client):
+    def test_pis_active_filter(self, staff_client):
         PIFactory(last_name="ActivePI", is_active=True)
         PIFactory(last_name="InactivePI", is_active=False)
-        resp = staff_client.get("/api/v1/pis/")
+        resp = staff_client.get("/api/v1/pis/?is_active=true")
         last_names = [p["last_name"] for p in resp.json()]
         assert "ActivePI" in last_names
         assert "InactivePI" not in last_names
@@ -421,6 +421,340 @@ class TestReferenceDataEndpoints:
         pi = next(p for p in resp.json() if p["last_name"] == "Lovelace")
         assert "display_name" in pi
         assert "Lovelace" in pi["display_name"]
+
+
+# ===========================================================================
+# Reference data CRUD — ServiceCategory
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestServiceCategoryCRUD:
+    # ── list ────────────────────────────────────────────────────────────────
+
+    def test_list_requires_admin_token(self, api_client):
+        resp = api_client.get("/api/v1/categories/")
+        assert resp.status_code in (401, 403)
+
+    def test_list_returns_all_including_inactive(self, staff_client):
+        ServiceCategoryFactory(name="Active Cat", is_active=True)
+        ServiceCategoryFactory(name="Inactive Cat", is_active=False)
+        resp = staff_client.get("/api/v1/categories/")
+        names = [c["name"] for c in resp.json()]
+        assert "Active Cat" in names
+        assert "Inactive Cat" in names
+
+    def test_list_filter_active_only(self, staff_client):
+        ServiceCategoryFactory(name="Active Cat", is_active=True)
+        ServiceCategoryFactory(name="Inactive Cat", is_active=False)
+        resp = staff_client.get("/api/v1/categories/?is_active=true")
+        names = [c["name"] for c in resp.json()]
+        assert "Active Cat" in names
+        assert "Inactive Cat" not in names
+
+    def test_list_filter_inactive_only(self, staff_client):
+        ServiceCategoryFactory(name="Active Cat", is_active=True)
+        ServiceCategoryFactory(name="Inactive Cat", is_active=False)
+        resp = staff_client.get("/api/v1/categories/?is_active=false")
+        names = [c["name"] for c in resp.json()]
+        assert "Inactive Cat" in names
+        assert "Active Cat" not in names
+
+    # ── create ──────────────────────────────────────────────────────────────
+
+    def test_create_returns_201(self, staff_client):
+        resp = staff_client.post(
+            "/api/v1/categories/", {"name": "New Category"}, format="json"
+        )
+        assert resp.status_code == 201
+        assert resp.json()["name"] == "New Category"
+        assert resp.json()["is_active"] is True
+
+    def test_create_requires_admin_token(self, api_client):
+        resp = api_client.post(
+            "/api/v1/categories/", {"name": "New Category"}, format="json"
+        )
+        assert resp.status_code in (401, 403)
+
+    def test_create_missing_name_returns_400(self, staff_client):
+        resp = staff_client.post("/api/v1/categories/", {}, format="json")
+        assert resp.status_code == 400
+
+    def test_create_duplicate_name_returns_400(self, staff_client):
+        ServiceCategoryFactory(name="Duplicate")
+        resp = staff_client.post(
+            "/api/v1/categories/", {"name": "Duplicate"}, format="json"
+        )
+        assert resp.status_code == 400
+
+    # ── retrieve ────────────────────────────────────────────────────────────
+
+    def test_retrieve_returns_200(self, staff_client):
+        cat = ServiceCategoryFactory()
+        resp = staff_client.get(f"/api/v1/categories/{cat.pk}/")
+        assert resp.status_code == 200
+        assert resp.json()["id"] == cat.pk
+
+    def test_retrieve_requires_admin_token(self, api_client):
+        cat = ServiceCategoryFactory()
+        resp = api_client.get(f"/api/v1/categories/{cat.pk}/")
+        assert resp.status_code in (401, 403)
+
+    def test_retrieve_nonexistent_returns_404(self, staff_client):
+        resp = staff_client.get("/api/v1/categories/999999/")
+        assert resp.status_code == 404
+
+    # ── update ──────────────────────────────────────────────────────────────
+
+    def test_patch_updates_name(self, staff_client):
+        cat = ServiceCategoryFactory(name="Old Name")
+        resp = staff_client.patch(
+            f"/api/v1/categories/{cat.pk}/", {"name": "New Name"}, format="json"
+        )
+        assert resp.status_code == 200
+        cat.refresh_from_db()
+        assert cat.name == "New Name"
+
+    def test_patch_requires_admin_token(self, api_client):
+        cat = ServiceCategoryFactory()
+        resp = api_client.patch(
+            f"/api/v1/categories/{cat.pk}/", {"name": "X"}, format="json"
+        )
+        assert resp.status_code in (401, 403)
+
+    # ── soft-delete ─────────────────────────────────────────────────────────
+
+    def test_delete_returns_204(self, staff_client):
+        cat = ServiceCategoryFactory(is_active=True)
+        resp = staff_client.delete(f"/api/v1/categories/{cat.pk}/")
+        assert resp.status_code == 204
+
+    def test_delete_soft_deletes(self, staff_client):
+        from apps.registry.models import ServiceCategory
+
+        cat = ServiceCategoryFactory(is_active=True)
+        staff_client.delete(f"/api/v1/categories/{cat.pk}/")
+        cat.refresh_from_db()
+        assert cat.is_active is False
+        assert ServiceCategory.objects.filter(pk=cat.pk).exists()
+
+    def test_delete_requires_admin_token(self, api_client):
+        cat = ServiceCategoryFactory()
+        resp = api_client.delete(f"/api/v1/categories/{cat.pk}/")
+        assert resp.status_code in (401, 403)
+
+
+# ===========================================================================
+# Reference data CRUD — ServiceCenter
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestServiceCenterCRUD:
+    def test_list_returns_all_including_inactive(self, staff_client):
+        ServiceCenterFactory(short_name="Active", is_active=True)
+        ServiceCenterFactory(short_name="Inactive", is_active=False)
+        resp = staff_client.get("/api/v1/service-centers/")
+        short_names = [c["short_name"] for c in resp.json()]
+        assert "Active" in short_names
+        assert "Inactive" in short_names
+
+    def test_list_filter_active_only(self, staff_client):
+        ServiceCenterFactory(short_name="Active", is_active=True)
+        ServiceCenterFactory(short_name="Inactive", is_active=False)
+        resp = staff_client.get("/api/v1/service-centers/?is_active=true")
+        short_names = [c["short_name"] for c in resp.json()]
+        assert "Active" in short_names
+        assert "Inactive" not in short_names
+
+    def test_create_returns_201(self, staff_client):
+        resp = staff_client.post(
+            "/api/v1/service-centers/",
+            {
+                "short_name": "NEW",
+                "full_name": "New Service Centre",
+                "website": "https://new.example.com",
+            },
+            format="json",
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["short_name"] == "NEW"
+        assert data["is_active"] is True
+
+    def test_create_requires_admin_token(self, api_client):
+        resp = api_client.post(
+            "/api/v1/service-centers/",
+            {"short_name": "X", "full_name": "Y"},
+            format="json",
+        )
+        assert resp.status_code in (401, 403)
+
+    def test_create_missing_required_fields_returns_400(self, staff_client):
+        resp = staff_client.post("/api/v1/service-centers/", {}, format="json")
+        assert resp.status_code == 400
+
+    def test_retrieve_returns_200(self, staff_client):
+        center = ServiceCenterFactory()
+        resp = staff_client.get(f"/api/v1/service-centers/{center.pk}/")
+        assert resp.status_code == 200
+        assert str(resp.json()["id"]) == str(center.pk)
+
+    def test_patch_updates_full_name(self, staff_client):
+        center = ServiceCenterFactory(full_name="Old Name")
+        resp = staff_client.patch(
+            f"/api/v1/service-centers/{center.pk}/",
+            {"full_name": "Updated Name"},
+            format="json",
+        )
+        assert resp.status_code == 200
+        center.refresh_from_db()
+        assert center.full_name == "Updated Name"
+
+    def test_delete_soft_deletes(self, staff_client):
+        from apps.registry.models import ServiceCenter
+
+        center = ServiceCenterFactory(is_active=True)
+        resp = staff_client.delete(f"/api/v1/service-centers/{center.pk}/")
+        assert resp.status_code == 204
+        center.refresh_from_db()
+        assert center.is_active is False
+        assert ServiceCenter.objects.filter(pk=center.pk).exists()
+
+    def test_delete_requires_admin_token(self, api_client):
+        center = ServiceCenterFactory()
+        resp = api_client.delete(f"/api/v1/service-centers/{center.pk}/")
+        assert resp.status_code in (401, 403)
+
+
+# ===========================================================================
+# Reference data CRUD — PrincipalInvestigator
+# ===========================================================================
+
+
+@pytest.mark.django_db
+class TestPrincipalInvestigatorCRUD:
+    def test_list_returns_all_including_inactive(self, staff_client):
+        PIFactory(last_name="ActivePI", is_active=True)
+        PIFactory(last_name="InactivePI", is_active=False)
+        resp = staff_client.get("/api/v1/pis/")
+        last_names = [p["last_name"] for p in resp.json()]
+        assert "ActivePI" in last_names
+        assert "InactivePI" in last_names
+
+    def test_list_filter_active_only(self, staff_client):
+        PIFactory(last_name="ActivePI", is_active=True)
+        PIFactory(last_name="InactivePI", is_active=False)
+        resp = staff_client.get("/api/v1/pis/?is_active=true")
+        last_names = [p["last_name"] for p in resp.json()]
+        assert "ActivePI" in last_names
+        assert "InactivePI" not in last_names
+
+    def test_create_returns_201(self, staff_client):
+        resp = staff_client.post(
+            "/api/v1/pis/",
+            {
+                "last_name": "Smith",
+                "first_name": "Alice",
+                "email": "alice.smith@example.com",
+                "institute": "Example University",
+            },
+            format="json",
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["last_name"] == "Smith"
+        assert data["first_name"] == "Alice"
+        assert data["email"] == "alice.smith@example.com"
+        assert data["is_active"] is True
+
+    def test_create_requires_admin_token(self, api_client):
+        resp = api_client.post(
+            "/api/v1/pis/",
+            {"last_name": "Smith", "first_name": "Alice"},
+            format="json",
+        )
+        assert resp.status_code in (401, 403)
+
+    def test_create_missing_required_fields_returns_400(self, staff_client):
+        resp = staff_client.post("/api/v1/pis/", {}, format="json")
+        assert resp.status_code == 400
+
+    def test_create_invalid_orcid_returns_400(self, staff_client):
+        resp = staff_client.post(
+            "/api/v1/pis/",
+            {
+                "last_name": "Smith",
+                "first_name": "Alice",
+                "orcid": "not-a-valid-orcid",
+            },
+            format="json",
+        )
+        assert resp.status_code == 400
+
+    def test_retrieve_returns_200(self, staff_client):
+        pi = PIFactory()
+        resp = staff_client.get(f"/api/v1/pis/{pi.pk}/")
+        assert resp.status_code == 200
+        assert str(resp.json()["id"]) == str(pi.pk)
+
+    def test_retrieve_includes_email(self, staff_client):
+        pi = PIFactory(email="private@example.com")
+        resp = staff_client.get(f"/api/v1/pis/{pi.pk}/")
+        assert resp.json()["email"] == "private@example.com"
+
+    def test_pi_email_not_in_submission_response(self, api_client):
+        """PI email must not leak into submission responses."""
+        from tests.factories import APIKeyFactory
+
+        pi = PIFactory(email="private@example.com")
+        sub = ServiceSubmissionFactory(biotools_url="")
+        sub.responsible_pis.set([pi])
+        _, plaintext = APIKeyFactory.create_with_plaintext(submission=sub)
+        api_client.credentials(HTTP_AUTHORIZATION=f"ApiKey {plaintext}")
+        resp = api_client.get(f"/api/v1/submissions/{sub.pk}/")
+        assert "private@example.com" not in resp.content.decode()
+
+    def test_patch_updates_institute(self, staff_client):
+        pi = PIFactory(institute="Old Uni")
+        resp = staff_client.patch(
+            f"/api/v1/pis/{pi.pk}/",
+            {"institute": "New Uni"},
+            format="json",
+        )
+        assert resp.status_code == 200
+        pi.refresh_from_db()
+        assert pi.institute == "New Uni"
+
+    def test_patch_deactivate(self, staff_client):
+        pi = PIFactory(is_active=True)
+        resp = staff_client.patch(
+            f"/api/v1/pis/{pi.pk}/", {"is_active": False}, format="json"
+        )
+        assert resp.status_code == 200
+        pi.refresh_from_db()
+        assert pi.is_active is False
+
+    def test_delete_soft_deletes(self, staff_client):
+        from apps.registry.models import PrincipalInvestigator
+
+        pi = PIFactory(is_active=True)
+        resp = staff_client.delete(f"/api/v1/pis/{pi.pk}/")
+        assert resp.status_code == 204
+        pi.refresh_from_db()
+        assert pi.is_active is False
+        assert PrincipalInvestigator.objects.filter(pk=pi.pk).exists()
+
+    def test_delete_requires_admin_token(self, api_client):
+        pi = PIFactory()
+        resp = api_client.delete(f"/api/v1/pis/{pi.pk}/")
+        assert resp.status_code in (401, 403)
+
+    def test_response_includes_display_name(self, staff_client):
+        pi = PIFactory(first_name="Ada", last_name="Lovelace")
+        resp = staff_client.get(f"/api/v1/pis/{pi.pk}/")
+        assert "display_name" in resp.json()
+        assert "Lovelace" in resp.json()["display_name"]
 
 
 # ===========================================================================

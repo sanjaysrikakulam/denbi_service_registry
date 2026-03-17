@@ -128,8 +128,12 @@ All URL fields must use `https://`. Domain-specific validators are applied on sa
 
 ```sql
 CREATE INDEX ON submissions_servicesubmission (status);
-CREATE INDEX ON submissions_servicesubmission (submitted_at);
+CREATE INDEX ON submissions_servicesubmission (submitted_at DESC);
 CREATE INDEX ON submissions_servicesubmission (service_center_id);
+CREATE INDEX ON submissions_servicesubmission (register_as_elixir);
+CREATE INDEX ON submissions_servicesubmission (year_established);
+-- Compound: default admin list sort + status filter
+CREATE INDEX ON submissions_servicesubmission (submitted_at DESC, status);
 ```
 
 ---

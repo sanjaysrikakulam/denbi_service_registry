@@ -310,8 +310,10 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
 
     @admin.display(description="API Keys")
     def key_count(self, obj):
-        active = obj.api_keys.filter(is_active=True).count()
-        total = obj.api_keys.count()
+        # Use the prefetched api_keys cache — .filter().count() would hit the DB again
+        keys = obj.api_keys.all()
+        active = sum(1 for k in keys if k.is_active)
+        total = len(keys)
         if active == 0:
             return format_html(
                 '<span style="color:var(--body-quiet-color);font-size:.8rem">0 / {}</span>',
@@ -332,7 +334,7 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
             reverse("admin:submissions_submissionapikey_changelist")
             + f"?submission__id__exact={obj.pk}"
         )
-        count = obj.api_keys.count()
+        count = len(obj.api_keys.all())  # len() uses prefetched cache; .count() does not
         return format_html(
             '<a href="{}" style="font-size:.8rem;white-space:nowrap">🔑 Manage ({})</a>',
             url,
@@ -500,9 +502,7 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
                     "submitter_affiliation": s.submitter_affiliation,
                     "host_institute": s.host_institute,
                     "service_center": str(s.service_center),
-                    "categories": list(
-                        s.service_categories.values_list("name", flat=True)
-                    ),
+                    "categories": [c.name for c in s.service_categories.all()],
                     "register_as_elixir": s.register_as_elixir,
                     "website_url": s.website_url,
                     "license": s.license,
@@ -669,6 +669,7 @@ class SubmissionAPIKeyAdmin(admin.ModelAdmin):
     )
     ordering = ("-created_at",)
     save_on_top = True
+    list_select_related = ("submission",)
 
     # ── List helpers ─────────────────────────────────────────────────────────
 

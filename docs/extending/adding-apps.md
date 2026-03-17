@@ -121,19 +121,49 @@ class FundingBodySerializer(serializers.ModelSerializer):
 
 ### Step 2 — Write the viewset
 
+Reference data viewsets use `ModelViewSet` for full CRUD. `destroy()` is overridden
+to soft-delete (set `is_active=False`) rather than remove the record, preserving
+referential integrity with existing submissions.
+
 ```python
 # apps/api/views.py
 
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from rest_framework import status, viewsets
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.response import Response
 
-@extend_schema(tags=["Reference Data"])
-class FundingBodyViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """List active funding bodies. Requires admin token."""
-    queryset = FundingBody.objects.filter(is_active=True)
-    serializer_class = FundingBodySerializer
+from .permissions import IsAdminTokenUser
+
+@extend_schema(
+    tags=["Reference Data"],
+    parameters=[OpenApiParameter("is_active", str, description="Filter by active status (true/false)")],
+)
+class FundingBodyViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for funding bodies. All operations require admin token.
+    DELETE performs a soft-delete (sets is_active=False).
+    Filter: ?is_active=true|false
+    """
+    serializer_class = FundingBodyAdminSerializer
     permission_classes = [IsAdminTokenUser]
     authentication_classes = [TokenAuthentication]
     pagination_class = None
+
+    def get_queryset(self):
+        qs = FundingBody.objects.all().order_by("name")
+        value = self.request.query_params.get("is_active")
+        if value == "true":
+            qs = qs.filter(is_active=True)
+        elif value == "false":
+            qs = qs.filter(is_active=False)
+        return qs
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_active = False
+        instance.save(update_fields=["is_active"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 ```
 
 ### Step 3 — Register the URL
@@ -149,21 +179,41 @@ router.register("funding-bodies", FundingBodyViewSet, basename="fundingbody")
 # tests/test_api.py
 
 @pytest.mark.django_db
-class TestFundingBodyEndpoint:
+class TestFundingBodyCRUD:
 
     def test_requires_admin_token(self, api_client):
         resp = api_client.get("/api/v1/funding-bodies/")
-        assert resp.status_code == 403
+        assert resp.status_code in (401, 403)
 
-    def test_returns_active_bodies(self, api_client, admin_user):
-        _, token = admin_user
+    def test_list_returns_all_including_inactive(self, staff_client):
         FundingBodyFactory(name="BMBF", is_active=True)
         FundingBodyFactory(name="Old Body", is_active=False)
-        api_client.credentials(HTTP_AUTHORIZATION=f"Token {token}")
-        resp = api_client.get("/api/v1/funding-bodies/")
+        resp = staff_client.get("/api/v1/funding-bodies/")
+        names = [b["name"] for b in resp.json()]
+        assert "BMBF" in names
+        assert "Old Body" in names  # all shown by default
+
+    def test_list_filter_active_only(self, staff_client):
+        FundingBodyFactory(name="BMBF", is_active=True)
+        FundingBodyFactory(name="Old Body", is_active=False)
+        resp = staff_client.get("/api/v1/funding-bodies/?is_active=true")
         names = [b["name"] for b in resp.json()]
         assert "BMBF" in names
         assert "Old Body" not in names
+
+    def test_create_returns_201(self, staff_client):
+        resp = staff_client.post(
+            "/api/v1/funding-bodies/", {"name": "DFG"}, format="json"
+        )
+        assert resp.status_code == 201
+        assert resp.json()["name"] == "DFG"
+
+    def test_delete_soft_deletes(self, staff_client):
+        body = FundingBodyFactory(is_active=True)
+        resp = staff_client.delete(f"/api/v1/funding-bodies/{body.pk}/")
+        assert resp.status_code == 204
+        body.refresh_from_db()
+        assert body.is_active is False
 ```
 
 ---
@@ -395,6 +445,24 @@ mypy apps/ config/
 
 ### Test conventions
 - All new model code needs corresponding `test_models.py` tests
-- All new views need corresponding `test_views.py` tests  
+- All new views need corresponding `test_views.py` tests
 - All new API endpoints need corresponding `test_api.py` tests
 - Use factories from `tests/factories.py` — never create fixtures inline
+
+### Database query conventions
+
+**Always tune new querysets for N+1.** The rules applied throughout this codebase:
+
+| Situation | Do | Don't |
+|---|---|---|
+| ViewSet base queryset | `select_related` for FK/OneToOne; `prefetch_related` for M2M / reverse FK | Leave relations unresolved |
+| Admin `list_display` accesses FK | Set `list_select_related = ("field",)` | Access `obj.fk.attr` without it |
+| Counting a prefetched relation | `len(obj.relation.all())` | `obj.relation.count()` |
+| Listing values from a prefetched relation | `[x.field for x in obj.relation.all()]` | `obj.relation.values_list(...)` |
+| Resolving a list of IDs/URIs against the DB | `Model.objects.filter(field__in=ids)` → dict | `Model.objects.get(field=id)` in a loop |
+| Iterating in an admin action | Call `.select_related()` / `.prefetch_related()` on the passed `queryset` | Rely on the class-level queryset |
+
+**Add `db_index=True` to any field used in `filter()` or `order_by()`** in views, the API, or admin `list_filter`.
+Add compound `Meta.indexes` when two fields are filtered or sorted together (e.g. `["-submitted_at", "status"]`).
+
+See [Architecture → Database query strategy](../architecture.md#database-query-strategy) for the full reference implementation.

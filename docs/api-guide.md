@@ -143,17 +143,88 @@ Full `PUT` is not supported — use `PATCH`.
 
 ---
 
-### `GET /api/v1/categories/` — Service categories
+### Reference data — Categories, Service Centres, PIs
 
-Admin Token required. Returns all active service categories.
+All reference data endpoints require an admin Token. All three resources support
+full CRUD and follow the same pattern.
 
-### `GET /api/v1/service-centers/` — Service centres
+| Method | URL pattern | Description |
+|--------|-------------|-------------|
+| `GET` | `/api/v1/categories/` | List all categories (active + inactive) |
+| `POST` | `/api/v1/categories/` | Create a category |
+| `GET` | `/api/v1/categories/{id}/` | Retrieve a category |
+| `PATCH` | `/api/v1/categories/{id}/` | Partial update |
+| `PUT` | `/api/v1/categories/{id}/` | Full update |
+| `DELETE` | `/api/v1/categories/{id}/` | Soft-delete (sets `is_active=False`) |
 
-Admin Token required. Returns all active de.NBI service centres.
+Same pattern applies for `/api/v1/service-centers/{id}/` and `/api/v1/pis/{id}/`.
 
-### `GET /api/v1/pis/` — Principal investigators
+**`DELETE` is a soft-delete** — the record is retained in the database and remains
+linked to existing submissions. `is_active=False` hides it from the registration form
+but does not break any foreign keys.
 
-Admin Token required. Returns all active PIs.
+**Filter:** `?is_active=true|false` narrows the list to active or inactive records.
+Without the filter, both active and inactive records are returned.
+
+#### Fields — `/api/v1/categories/`
+
+| Field | Type | Writable | Notes |
+|-------|------|----------|-------|
+| `id` | integer | no | Auto-assigned |
+| `name` | string | yes | Must be unique |
+| `is_active` | boolean | yes | Defaults to `true` |
+
+#### Fields — `/api/v1/service-centers/`
+
+| Field | Type | Writable | Notes |
+|-------|------|----------|-------|
+| `id` | UUID | no | Auto-assigned |
+| `short_name` | string | yes | e.g. `"HD-HuB"` |
+| `full_name` | string | yes | Full official name |
+| `website` | URL | yes | Optional |
+| `is_active` | boolean | yes | Defaults to `true` |
+
+#### Fields — `/api/v1/pis/`
+
+| Field | Type | Writable | Notes |
+|-------|------|----------|-------|
+| `id` | UUID | no | Auto-assigned |
+| `last_name` | string | yes | Required |
+| `first_name` | string | yes | Required |
+| `display_name` | string | no | Computed (`"Last, First"`) |
+| `email` | string | yes | Internal — never exposed in submission responses |
+| `institute` | string | yes | Optional |
+| `orcid` | string | yes | Optional; validated format + checksum |
+| `is_active` | boolean | yes | Defaults to `true` |
+| `is_associated_partner` | boolean | yes | Mark `true` for the generic "Associated partner" entry |
+
+#### curl examples
+
+```bash
+# List all service centres (active + inactive)
+curl https://service-registry.bi.denbi.de/api/v1/service-centers/ \
+  -H "Authorization: Token <admin-token>"
+
+# List active categories only
+curl "https://service-registry.bi.denbi.de/api/v1/categories/?is_active=true" \
+  -H "Authorization: Token <admin-token>"
+
+# Create a new PI
+curl -X POST https://service-registry.bi.denbi.de/api/v1/pis/ \
+  -H "Authorization: Token <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"last_name": "Smith", "first_name": "Alice", "email": "a.smith@example.com", "institute": "Example University"}'
+
+# Deactivate a service centre (soft-delete)
+curl -X DELETE https://service-registry.bi.denbi.de/api/v1/service-centers/<id>/ \
+  -H "Authorization: Token <admin-token>"
+
+# Re-activate a category via PATCH
+curl -X PATCH https://service-registry.bi.denbi.de/api/v1/categories/<id>/ \
+  -H "Authorization: Token <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"is_active": true}'
+```
 
 ### `GET /api/v1/edam/` — EDAM ontology terms
 
