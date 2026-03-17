@@ -1,4 +1,4 @@
-site_name: de.NBI Service Registry
+site_name: Service Registry
 site_description: Documentation for the de.NBI & ELIXIR-DE Service Registration System
 site_url: https://service-registry.bi.denbi.de/docs
 repo_url: https://github.com/deNBI/denbi_service_registry
@@ -8,6 +8,7 @@ edit_uri: ""
 theme:
   name: material
   font: false # Use system fonts — better performance and no external requests
+  logo: https://www.denbi.de/templates/nbimaster/img/denbi-logo-color.svg
   palette:
     - scheme: default
       primary: green
