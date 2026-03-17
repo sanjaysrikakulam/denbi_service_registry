@@ -5,15 +5,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('registry', '0001_initial'),
+        ("registry", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='principalinvestigator',
-            name='orcid',
-            field=models.CharField(blank=True, help_text='ORCID iD in format 0000-0000-0000-0000.', max_length=30, validators=[apps.registry.models._validate_orcid]),
+            model_name="principalinvestigator",
+            name="orcid",
+            field=models.CharField(
+                blank=True,
+                help_text="ORCID iD in format 0000-0000-0000-0000.",
+                max_length=30,
+                validators=[apps.registry.models._validate_orcid],
+            ),
         ),
     ]

@@ -430,9 +430,7 @@ class BioToolsRecordSerializer(serializers.ModelSerializer):
             return []
 
         # Single query for all URIs — avoids one query per URI in a loop
-        terms_by_uri = {
-            t.uri: t for t in EdamTerm.objects.filter(uri__in=uris)
-        }
+        terms_by_uri = {t.uri: t for t in EdamTerm.objects.filter(uri__in=uris)}
 
         resolved = []
         for uri in uris:

@@ -334,7 +334,9 @@ class ServiceSubmissionAdmin(admin.ModelAdmin):
             reverse("admin:submissions_submissionapikey_changelist")
             + f"?submission__id__exact={obj.pk}"
         )
-        count = len(obj.api_keys.all())  # len() uses prefetched cache; .count() does not
+        count = len(
+            obj.api_keys.all()
+        )  # len() uses prefetched cache; .count() does not
         return format_html(
             '<a href="{}" style="font-size:.8rem;white-space:nowrap">🔑 Manage ({})</a>',
             url,

@@ -72,7 +72,7 @@ All key operations are logged in Django's admin audit log (History tab on the su
 Reference data (PIs, service centres, categories) can be managed in two ways:
 
 - **Admin UI** — the Django admin portal (see below)
-- **REST API** — `POST/PATCH/DELETE /api/v1/pis/`, `/api/v1/service-centers/`, `/api/v1/categories/` — useful for bulk onboarding or automation (see [API Guide](../api-guide.md#reference-data--categories-service-centres-pis))
+- **REST API** — `POST/PATCH/DELETE /api/v1/pis/`, `/api/v1/service-centers/`, `/api/v1/categories/` — useful for bulk onboarding or automation (see [API Guide](api-guide.md#reference-data--categories-service-centres-pis))
 
 Both interfaces support soft-delete: `DELETE` via the API (or setting `is_active = False` in the admin) hides the record from the registration form but keeps it linked to existing submissions.
 
