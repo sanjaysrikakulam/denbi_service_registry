@@ -23,6 +23,7 @@ from rest_framework.test import APIClient
 
 from tests.factories import (
     APIKeyFactory,
+    BioToolsRecordFactory,
     PIFactory,
     ServiceCategoryFactory,
     ServiceCenterFactory,
@@ -825,3 +826,55 @@ class TestErrorEnvelope:
         data = resp.json()
         assert "error" in data
         assert "request_id" in data
+
+
+# ---------------------------------------------------------------------------
+# BioToolsRecord viewset — access control tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestBioToolsRecordAccessControl:
+    """Ensure bio.tools retrieve endpoint only exposes approved submissions."""
+
+    def test_retrieve_approved_submission_public(self, api_client):
+        """Unauthenticated users can retrieve records for approved submissions."""
+        record = BioToolsRecordFactory(submission__status="approved")
+        resp = api_client.get(f"/api/v1/biotools/{record.biotools_id}/")
+        assert resp.status_code == 200
+        assert resp.json()["biotools_id"] == record.biotools_id
+
+    def test_retrieve_submitted_denied(self, api_client):
+        """Records for non-approved submissions must not be publicly accessible."""
+        record = BioToolsRecordFactory(submission__status="submitted")
+        resp = api_client.get(f"/api/v1/biotools/{record.biotools_id}/")
+        assert resp.status_code == 404
+
+    def test_retrieve_under_review_denied(self, api_client):
+        record = BioToolsRecordFactory(submission__status="under_review")
+        resp = api_client.get(f"/api/v1/biotools/{record.biotools_id}/")
+        assert resp.status_code == 404
+
+    def test_retrieve_rejected_denied(self, api_client):
+        record = BioToolsRecordFactory(submission__status="rejected")
+        resp = api_client.get(f"/api/v1/biotools/{record.biotools_id}/")
+        assert resp.status_code == 404
+
+    def test_retrieve_draft_denied(self, api_client):
+        record = BioToolsRecordFactory(submission__status="draft")
+        resp = api_client.get(f"/api/v1/biotools/{record.biotools_id}/")
+        assert resp.status_code == 404
+
+    def test_list_requires_admin_token(self, api_client):
+        """List endpoint requires admin authentication."""
+        BioToolsRecordFactory(submission__status="approved")
+        resp = api_client.get("/api/v1/biotools/")
+        assert resp.status_code in (401, 403)
+
+    def test_list_with_admin_token(self, staff_client):
+        """Admin can list all records regardless of submission status."""
+        BioToolsRecordFactory(submission__status="approved")
+        BioToolsRecordFactory(submission__status="submitted")
+        resp = staff_client.get("/api/v1/biotools/")
+        assert resp.status_code == 200
+        assert len(resp.json()["results"]) == 2

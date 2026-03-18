@@ -12,7 +12,9 @@ Tasks:
 
 import logging
 from datetime import timedelta
+from pathlib import Path
 
+import yaml
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -20,6 +22,33 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Email texts — loaded once from YAML at module import time
+# ---------------------------------------------------------------------------
+_EMAIL_TEXTS_PATH = Path(__file__).resolve().parent / "email_texts.yaml"
+_EMAIL_TEXTS: dict = {}
+try:
+    with open(_EMAIL_TEXTS_PATH, encoding="utf-8") as f:
+        _EMAIL_TEXTS = yaml.safe_load(f) or {}
+except FileNotFoundError:
+    pass  # Graceful fallback — hardcoded defaults used below
+
+
+def _email_subject(key: str, **kwargs) -> str:
+    """Return an email subject line from the YAML, with placeholder substitution."""
+    subjects = _EMAIL_TEXTS.get("subjects", {})
+    template = subjects.get(key, "")
+    if not template:
+        # Fallback if YAML is missing or key is absent
+        return f"[de.NBI Registry] {kwargs.get('service_name', 'Notification')}"
+    return template.format(**kwargs)
+
+
+def _status_message(status: str) -> str:
+    """Return the submitter-facing message for a given status."""
+    messages = _EMAIL_TEXTS.get("status_messages", {})
+    return messages.get(status, messages.get("default", ""))
 
 
 @shared_task(
@@ -73,15 +102,11 @@ def send_submission_notification(
     if cc_submitter and cc_submitter != recipient:
         cc_list.append(cc_submitter)
 
-    subject_map = {
-        "created": f"[de.NBI Registry] New service submission: {submission.service_name}",
-        "status_changed": (
-            f"[de.NBI Registry] Status updated to '{submission.get_status_display()}': "
-            f"{submission.service_name}"
-        ),
-    }
-    subject = subject_map.get(
-        event, f"[de.NBI Registry] Update: {submission.service_name}"
+    subject = _email_subject(
+        event,
+        service_name=submission.service_name,
+        status=submission.get_status_display(),
+        
     )
 
     context = {
@@ -136,11 +161,15 @@ def _send_submitter_status_email(submission) -> None:
         )
         return
 
-    subject = (
-        f"Your service registration status: {submission.get_status_display()} "
-        f"— {submission.service_name}"
+    subject = _email_subject(
+        "submitter_status",
+        service_name=submission.service_name,
+        status=submission.get_status_display(),
     )
-    context = {"submission": submission}
+    context = {
+        "submission": submission,
+        "status_message": _status_message(submission.status),
+    }
     text_body = render_to_string(
         "submissions/email/status_update_submitter.txt", context
     )

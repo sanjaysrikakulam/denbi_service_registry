@@ -31,6 +31,7 @@ services:
         --timeout 60
         --keep-alive 5
         --worker-tmp-dir /dev/shm
+        --forwarded-allow-ips "${FORWARDED_ALLOW_IPS}"
         --access-logfile -
         --error-logfile -
     environment:

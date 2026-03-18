@@ -15,8 +15,10 @@ client-side via HTML5 attributes. The server is always authoritative.
 import re
 import unicodedata
 from datetime import date
+from pathlib import Path
 
 import bleach
+import yaml
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
@@ -24,6 +26,17 @@ from django.utils.translation import gettext_lazy as _
 from apps.registry.models import PrincipalInvestigator, ServiceCategory, ServiceCenter
 from .models import KpiMonitoring, ServiceSubmission
 from .widgets import EdamAutocompleteWidget
+
+# ---------------------------------------------------------------------------
+# Form texts — loaded once from YAML at module import time
+# ---------------------------------------------------------------------------
+_FORM_TEXTS_PATH = Path(__file__).resolve().parent / "form_texts.yaml"
+_FORM_TEXTS: dict = {}
+try:
+    with open(_FORM_TEXTS_PATH, encoding="utf-8") as f:
+        _FORM_TEXTS = yaml.safe_load(f) or {}
+except FileNotFoundError:
+    pass  # Graceful fallback — fields keep their model help_text
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +342,13 @@ class SubmissionForm(forms.ModelForm):
             self.fields[
                 "internal_contact_email_confirm"
             ].initial = self.instance.internal_contact_email
+
+        # Apply YAML-driven help text and tooltip attributes
+        for field_name, field_obj in self.fields.items():
+            texts = _FORM_TEXTS.get(field_name, {})
+            if texts.get("help"):
+                field_obj.help_text = texts["help"]
+            field_obj.tooltip = texts.get("tooltip", "")
 
     # -- Cross-field validation --
 

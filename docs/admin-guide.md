@@ -72,7 +72,7 @@ All key operations are logged in Django's admin audit log (History tab on the su
 Reference data (PIs, service centres, categories) can be managed in two ways:
 
 - **Admin UI** — the Django admin portal (see below)
-- **REST API** — `POST/PATCH/DELETE /api/v1/pis/`, `/api/v1/service-centers/`, `/api/v1/categories/` — useful for bulk onboarding or automation (see [API Guide](api-guide.md#reference-data--categories-service-centres-pis))
+- **REST API** — `POST/PATCH/DELETE /api/v1/pis/`, `/api/v1/service-centers/`, `/api/v1/categories/` — useful for bulk onboarding or automation (see [API Guide](api-guide.md#reference-data-categories-service-centres-pis))
 
 Both interfaces support soft-delete: `DELETE` via the API (or setting `is_active = False` in the admin) hides the record from the registration form but keeps it linked to existing submissions.
 
@@ -98,6 +98,96 @@ Both interfaces support soft-delete: `DELETE` via the API (or setting `is_active
 
 - Add new category types as needed.
 - `is_active = False` hides from the form.
+
+---
+
+## Customising Form Help Text & Tooltips
+
+The registration form displays two types of guidance for each field:
+
+- **Help text** — a short hint shown below the input field.
+- **Tooltip** — a detailed explanation shown when hovering or clicking the info icon next to the label.
+
+Both are controlled from a single YAML file:
+
+```
+apps/submissions/form_texts.yaml
+```
+
+### Editing the file
+
+Each field entry looks like this:
+
+```yaml
+service_name:
+  help: "Official name of the service."
+  tooltip: "Use the canonical name as it appears on your website. Avoid abbreviations unless they are the official name."
+```
+
+- Set `help: ""` to hide the help text below a field.
+- Set `tooltip: ""` to hide the info icon for that field.
+- Use plain text only — no HTML or Markdown.
+
+### Deploying changes
+
+After editing `form_texts.yaml`, rebuild the container image and redeploy:
+
+```bash
+docker compose build web
+docker compose up -d web
+```
+
+No code changes, no migrations, no template edits required.
+
+---
+
+## Customising Email Notification Text
+
+Email subject lines and status messages sent to submitters are controlled from a
+single YAML file:
+
+```
+apps/submissions/email_texts.yaml
+```
+
+### Subjects
+
+The `subjects` section defines the subject line for each email type.
+Placeholders `{service_name}` and `{status}` are replaced automatically:
+
+```yaml
+subjects:
+  created: "[de.NBI Registry] New service submission: {service_name}"
+  status_changed: "[de.NBI Registry] Status updated to '{status}': {service_name}"
+  updated: "[de.NBI Registry] Update: {service_name}"
+  submitter_status: "Your service registration status: {status} — {service_name}"
+```
+
+### Status messages
+
+The `status_messages` section provides the body text included in the submitter
+notification when an admin changes the submission status.
+A `default` fallback is used for any status not explicitly listed:
+
+```yaml
+status_messages:
+  approved: "Your service has been approved and is now registered …"
+  rejected: "Your service registration was not approved at this time …"
+  under_review: "Your submission is currently under review …"
+  default: "If you have questions about your submission, please contact us."
+```
+
+### Deploying changes
+
+After editing `email_texts.yaml`, rebuild and redeploy — same as form text
+changes:
+
+```bash
+docker compose build web
+docker compose up -d web
+```
+
+No code changes, no migrations, no template edits required.
 
 ---
 
@@ -282,10 +372,18 @@ For staff or external systems needing read-all API access:
 
 1. Go to **Admin → Auth Token → Tokens → Add Token**.
 2. Select the staff user and save.
-3. The token value is shown once — copy it immediately.
+3. The full token is displayed **once only** in a warning banner with a
+   **Copy to clipboard** button — copy it before navigating away.
 4. The consumer uses: `Authorization: Token <token-value>` in API requests.
 
 To revoke: delete the token record from the admin.
+
+!!! warning "Token visibility"
+    For security, token keys are **masked** throughout the admin interface.
+    The token list shows only the first 8 characters (e.g. `a3f7b2c1…`),
+    and the change view never displays the full key. The complete token is
+    shown exactly once — at the moment of creation. If lost, delete the
+    token and create a new one.
 
 ---
 

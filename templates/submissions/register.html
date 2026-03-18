@@ -87,7 +87,7 @@
         <div class="card-header"><span class="me-2">🔬</span>B — Service Master Data</div>
         <div class="card-body">
           {% include "submissions/partials/field.html" with field=form.service_name required=True %}
-          {% include "submissions/partials/field.html" with field=form.service_description required=True help_override="Describe your service. Mention if AI/ML/Deep Learning is used, programming language, data types, etc." %}
+          {% include "submissions/partials/field.html" with field=form.service_description required=True %}
           {% include "submissions/partials/field.html" with field=form.year_established required=True %}
           {% include "submissions/partials/field.html" with field=form.service_categories required=True %}
 
@@ -112,7 +112,7 @@
       <div class="card section-card mb-4" id="section-c">
         <div class="card-header"><span class="me-2">👥</span>C — Responsibilities &amp; Responsiveness</div>
         <div class="card-body">
-          {% include "submissions/partials/field.html" with field=form.responsible_pis required=True help_override="Hold Ctrl/Cmd to select multiple PIs. Choose 'Associated partner' if your PI is not listed." %}
+          {% include "submissions/partials/field.html" with field=form.responsible_pis required=True %}
 
           <!-- associated_partner_note conditional field -->
           <div id="associated-partner-wrapper" style="display:none">

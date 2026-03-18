@@ -10,6 +10,7 @@ Django/DRF layer.
 """
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.test import Client
 
 from tests.factories import APIKeyFactory, ServiceSubmissionFactory
@@ -200,3 +201,83 @@ class TestURLSchemeValidation:
                 _validate_https_url(url)
         else:
             _validate_https_url(url)  # must not raise
+
+
+# ===========================================================================
+# Admin auth token masking
+# ===========================================================================
+
+User = get_user_model()
+
+
+@pytest.mark.django_db
+class TestTokenAdminMasking:
+    """Auth tokens must be masked in the admin list and shown once on creation."""
+
+    @pytest.fixture
+    def superuser_client(self):
+        user = User.objects.create_superuser(username="super", password="testpass123")
+        client = Client()
+        client.force_login(user)
+        return client, user
+
+    def test_list_view_masks_token_key(self, superuser_client):
+        """Token list must show only first 8 chars, not the full key."""
+        from rest_framework.authtoken.models import Token
+
+        client, user = superuser_client
+        token = Token.objects.create(user=user)
+
+        from django.urls import reverse
+
+        url = reverse("admin:authtoken_tokenproxy_changelist")
+        resp = client.get(url)
+        content = resp.content.decode()
+
+        # Full key must NOT appear in the list page
+        assert token.key not in content
+        # Masked prefix must appear
+        assert f"{token.key[:8]}…" in content
+
+    def test_creation_shows_full_key_once(self, superuser_client):
+        """After creating a token, the response must contain the full key."""
+        client, _ = superuser_client
+        # Create a second user to assign the token to
+        target_user = User.objects.create_user(
+            username="tokenowner", password="testpass123"
+        )
+
+        from django.urls import reverse
+
+        url = reverse("admin:authtoken_tokenproxy_add")
+        resp = client.post(url, {"user": target_user.pk}, follow=True)
+        content = resp.content.decode()
+
+        from rest_framework.authtoken.models import Token
+
+        token = Token.objects.get(user=target_user)
+
+        # Full key must appear in the success message
+        assert token.key in content
+        # Copy button must be present
+        assert "Copy to clipboard" in content
+        # One-time warning must be present
+        assert "once only" in content
+
+    def test_change_view_hides_key(self, superuser_client):
+        """The change/edit view must not display the full token key."""
+        from rest_framework.authtoken.models import Token
+
+        client, user = superuser_client
+        token = Token.objects.create(user=user)
+
+        from django.urls import reverse
+
+        url = reverse("admin:authtoken_tokenproxy_changelist")
+        # DRF TokenAdmin maps change URLs to user pk
+        change_url = f"{url}{user.pk}/change/"
+        resp = client.get(change_url)
+        content = resp.content.decode()
+
+        # Full key must NOT be on the change page
+        assert token.key not in content

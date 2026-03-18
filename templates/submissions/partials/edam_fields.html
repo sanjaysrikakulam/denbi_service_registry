@@ -46,10 +46,23 @@ renders a pill zone for selected terms, and a debounced search dropdown.
   <div class="mb-4" id="field-wrapper-edam_topics">
     <label class="form-label fw-semibold" style="font-size:.875rem">
       EDAM Topics
+      {% if form.edam_topics.field.tooltip %}
+      <span class="tooltip-icon"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            data-bs-title="{{ form.edam_topics.field.tooltip }}"
+            tabindex="0"
+            role="button"
+            aria-label="More information about EDAM Topics">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+        </svg>
+      </span>
+      {% endif %}
     </label>
     <p class="form-text mb-2" style="margin-top:0">
-      Scientific domain or area of interest.
-      Examples: <em>Proteomics</em>, <em>Genomics</em>, <em>Structural biology</em>
+      {{ form.edam_topics.help_text }}
     </p>
 
     {# Hidden Django select — JS replaces this with the pill picker #}
@@ -70,10 +83,23 @@ renders a pill zone for selected terms, and a debounced search dropdown.
   <div class="mb-2" id="field-wrapper-edam_operations">
     <label class="form-label fw-semibold" style="font-size:.875rem">
       EDAM Operations
+      {% if form.edam_operations.field.tooltip %}
+      <span class="tooltip-icon"
+            data-bs-toggle="tooltip"
+            data-bs-placement="top"
+            data-bs-title="{{ form.edam_operations.field.tooltip }}"
+            tabindex="0"
+            role="button"
+            aria-label="More information about EDAM Operations">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+        </svg>
+      </span>
+      {% endif %}
     </label>
     <p class="form-text mb-2" style="margin-top:0">
-      Computational operations performed by the service.
-      Examples: <em>Sequence alignment</em>, <em>Visualisation</em>, <em>Pathway analysis</em>
+      {{ form.edam_operations.help_text }}
     </p>
 
     {{ form.edam_operations }}

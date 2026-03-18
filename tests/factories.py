@@ -19,6 +19,7 @@ from datetime import date
 import factory
 from factory.django import DjangoModelFactory
 
+from apps.biotools.models import BioToolsRecord
 from apps.registry.models import PrincipalInvestigator, ServiceCategory, ServiceCenter
 from apps.submissions.models import ServiceSubmission, SubmissionAPIKey, _hash_key
 
@@ -151,6 +152,22 @@ class ServiceSubmissionFactory(DjangoModelFactory):
                 self.responsible_pis.add(pi)
         else:
             self.responsible_pis.add(PIFactory())
+
+
+# ---------------------------------------------------------------------------
+# BioToolsRecord factory
+# ---------------------------------------------------------------------------
+
+
+class BioToolsRecordFactory(DjangoModelFactory):
+    class Meta:
+        model = BioToolsRecord
+
+    submission = factory.SubFactory(ServiceSubmissionFactory)
+    biotools_id = factory.Sequence(lambda n: f"testtool{n}")
+    name = factory.LazyAttribute(lambda o: f"Test Tool {o.biotools_id}")
+    description = "A test bio.tools record."
+    raw_json = factory.LazyFunction(dict)
 
 
 # ---------------------------------------------------------------------------

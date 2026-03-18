@@ -9,13 +9,7 @@ The status of your service registration has been updated.
   New status: {{ submission.get_status_display|upper }}
   Updated:    {{ submission.updated_at|date:"Y-m-d H:i" }} UTC
 
-{% if submission.status == "approved" %}Your service has been approved and is now registered in the de.NBI Service Registry.
-Thank you for your submission.
-{% elif submission.status == "rejected" %}Your service registration was not approved at this time.
-If you have questions, please contact us at {{ CONTACT_EMAIL }}.
-{% elif submission.status == "under_review" %}Your submission is currently under review. We will notify you once a decision has been made.
-{% else %}If you have questions about your submission, please contact us at {{ CONTACT_EMAIL }}.
-{% endif %}
+{{ status_message }}
 
 Submission ID: {{ submission.id }}
 

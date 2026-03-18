@@ -20,6 +20,7 @@ django-celery-results==2.6.0  # Store Celery results in Django DB
 
 # Security
 django-axes==8.3.1            # Brute-force protection on admin login
+django-ipware==7.0.1          # IP address resolution for django-axes (required by axes 8.x)
 django-csp==4.0               # Content Security Policy headers
 django-ratelimit==4.1.0       # Per-view rate limiting
 django-cors-headers==4.9.0    # CORS header management

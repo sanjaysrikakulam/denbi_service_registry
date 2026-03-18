@@ -549,6 +549,7 @@ class BioToolsRecordViewSet(
             return (
                 BioToolsRecord.objects.select_related("submission")
                 .prefetch_related("functions")
+                .filter(submission__status="approved")
                 .get(biotools_id=lookup)
             )
         except BioToolsRecord.DoesNotExist:

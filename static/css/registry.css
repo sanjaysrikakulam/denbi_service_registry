@@ -139,6 +139,35 @@ main.container { max-width: 1140px; }
 .form-text { font-size: .8rem; color: var(--gray-400); margin-top: .3rem; }
 .required-star { color: var(--red); margin-left: 2px; font-weight: 700; }
 
+/* Tooltip info icon next to field labels */
+.tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  color: var(--gray-400);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: color var(--transition);
+}
+.tooltip-icon:hover,
+.tooltip-icon:focus { color: var(--g); outline: none; }
+.tooltip-icon:focus-visible {
+  outline: 2px solid var(--g);
+  outline-offset: 2px;
+  border-radius: 50%;
+}
+
+/* Fieldset/legend for radio and checkbox groups (accessibility) */
+fieldset.mb-3 { border: none; padding: 0; margin: 0; }
+fieldset.mb-3 > legend {
+  float: none;
+  width: auto;
+  font-size: inherit;
+  padding: 0;
+  margin-bottom: .5rem;
+}
+
 .form-check-input:checked { background-color: var(--g); border-color: var(--g); }
 .form-check-input:focus { box-shadow: var(--focus-ring); border-color: var(--g); }
 

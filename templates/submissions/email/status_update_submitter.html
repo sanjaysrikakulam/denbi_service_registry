@@ -25,15 +25,7 @@ h2 { color: #005b9a; }
   <strong>Submission ID:</strong> <code>{{ submission.id }}</code>
 </div>
 
-{% if submission.status == "approved" %}
-<p>&#10003; Your service has been <strong>approved</strong> and is now registered in the de.NBI Service Registry. Thank you for your submission.</p>
-{% elif submission.status == "rejected" %}
-<p>Your service registration was not approved at this time. If you have questions, please contact us at <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>.</p>
-{% elif submission.status == "under_review" %}
-<p>Your submission is currently <strong>under review</strong>. We will notify you once a decision has been made.</p>
-{% else %}
-<p>If you have questions about your submission, please contact us at <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>.</p>
-{% endif %}
+<p>{{ status_message }}</p>
 
 <div class="footer">
   {{ CONTACT_ORG }} &bull; <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>

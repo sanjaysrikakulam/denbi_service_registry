@@ -239,3 +239,345 @@ class TestUpdateKeyForm:
         key = secrets.token_urlsafe(48)
         form = UpdateKeyForm({"api_key": key})
         assert form.is_valid(), form.errors
+
+
+# ---------------------------------------------------------------------------
+# Form texts YAML — tooltip system
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestFormTextsYAML:
+    """Verify the YAML-driven help text and tooltip system.
+
+    These tests also validate the *structure* of form_texts.yaml so that
+    CI catches formatting mistakes before they reach production.
+    """
+
+    # -- YAML file structure & syntax --
+
+    def test_yaml_loads_without_error(self):
+        from apps.submissions.forms import _FORM_TEXTS
+
+        assert isinstance(_FORM_TEXTS, dict)
+        assert len(_FORM_TEXTS) > 0
+
+    def test_yaml_is_valid_syntax(self):
+        """Catch YAML syntax errors with a clear message."""
+        import yaml
+        from pathlib import Path
+
+        path = (
+            Path(__file__).resolve().parent.parent / "apps/submissions/form_texts.yaml"
+        )
+        with open(path, encoding="utf-8") as f:
+            try:
+                data = yaml.safe_load(f)
+            except yaml.YAMLError as exc:
+                pytest.fail(
+                    f"form_texts.yaml has a YAML syntax error:\n{exc}\n\n"
+                    "Fix: check for incorrect indentation, missing quotes, "
+                    "or special characters that need quoting."
+                )
+        assert isinstance(data, dict), (
+            "form_texts.yaml must be a YAML mapping (key: value), not a list or scalar."
+        )
+
+    def test_every_entry_has_required_keys(self):
+        """Each field entry must have exactly 'help' and 'tooltip' keys."""
+        from apps.submissions.forms import _FORM_TEXTS
+
+        required_keys = {"help", "tooltip"}
+        for field_name, entry in _FORM_TEXTS.items():
+            assert isinstance(entry, dict), (
+                f"'{field_name}' must be a mapping with 'help' and 'tooltip' keys, "
+                f"got {type(entry).__name__}.\n"
+                f"Fix: add the structure:\n"
+                f"  {field_name}:\n"
+                f'    help: "..."\n'
+                f'    tooltip: "..."'
+            )
+            missing = required_keys - set(entry.keys())
+            assert not missing, (
+                f"'{field_name}' is missing required key(s): {missing}.\n"
+                f"Fix: add the missing key(s) under '{field_name}:' in form_texts.yaml."
+            )
+            extra = set(entry.keys()) - required_keys
+            assert not extra, (
+                f"'{field_name}' has unexpected key(s): {extra}.\n"
+                f"Only 'help' and 'tooltip' are allowed."
+            )
+
+    def test_all_values_are_strings(self):
+        """help and tooltip values must be strings (not numbers, bools, lists)."""
+        from apps.submissions.forms import _FORM_TEXTS
+
+        for field_name, entry in _FORM_TEXTS.items():
+            if not isinstance(entry, dict):
+                continue
+            for key in ("help", "tooltip"):
+                value = entry.get(key)
+                if value is None:
+                    continue
+                assert isinstance(value, str), (
+                    f"'{field_name}.{key}' must be a string, got {type(value).__name__}: {value!r}.\n"
+                    f'Fix: wrap the value in quotes, e.g. {key}: "{value}"'
+                )
+
+    # -- Completeness: YAML ↔ form fields --
+
+    def test_all_form_fields_have_yaml_entry(self):
+        """Every SubmissionForm field must have a corresponding YAML entry."""
+        from apps.submissions.forms import SubmissionForm, _FORM_TEXTS
+
+        form = SubmissionForm()
+        missing = [name for name in form.fields if name not in _FORM_TEXTS]
+        assert missing == [], (
+            f"Form field(s) missing from form_texts.yaml: {missing}\n"
+            f"Fix: add an entry for each missing field:\n"
+            + "\n".join(f'  {name}:\n    help: ""\n    tooltip: ""' for name in missing)
+        )
+
+    def test_no_stale_yaml_entries(self):
+        """YAML should not contain entries for fields that no longer exist."""
+        from apps.submissions.forms import SubmissionForm, _FORM_TEXTS
+
+        form = SubmissionForm()
+        stale = [name for name in _FORM_TEXTS if name not in form.fields]
+        assert stale == [], (
+            f"form_texts.yaml contains entries for fields that do not exist "
+            f"in SubmissionForm: {stale}\n"
+            f"Fix: remove these stale entries from form_texts.yaml."
+        )
+
+    # -- Runtime behaviour --
+
+    def test_yaml_overrides_help_text(self):
+        from apps.submissions.forms import SubmissionForm, _FORM_TEXTS
+
+        form = SubmissionForm()
+        for field_name, texts in _FORM_TEXTS.items():
+            if field_name not in form.fields:
+                continue
+            if texts.get("help"):
+                assert form.fields[field_name].help_text == texts["help"], (
+                    f"{field_name}: help_text not applied from YAML"
+                )
+
+    def test_tooltip_attribute_set(self):
+        from apps.submissions.forms import SubmissionForm, _FORM_TEXTS
+
+        form = SubmissionForm()
+        for field_name, texts in _FORM_TEXTS.items():
+            if field_name not in form.fields:
+                continue
+            assert hasattr(form.fields[field_name], "tooltip"), (
+                f"{field_name}: missing tooltip attribute"
+            )
+            assert form.fields[field_name].tooltip == texts.get("tooltip", "")
+
+    def test_fields_without_yaml_entry_keep_model_help_text(self):
+        """Fields not in form_texts.yaml retain their original model help_text."""
+        from apps.submissions.forms import SubmissionForm, _FORM_TEXTS
+
+        form = SubmissionForm()
+        for field_name, field_obj in form.fields.items():
+            if field_name not in _FORM_TEXTS:
+                assert hasattr(field_obj, "tooltip")
+                assert field_obj.tooltip == ""
+
+    def test_tooltip_rendered_in_field_template(self, rf):
+        """The field.html template renders a tooltip icon when tooltip is set."""
+        from django.template.loader import render_to_string
+
+        from apps.submissions.forms import SubmissionForm
+
+        request = rf.get("/")
+        form = SubmissionForm()
+        html = render_to_string(
+            "submissions/partials/field.html",
+            {"field": form["service_name"], "required": True},
+            request=request,
+        )
+        assert 'data-bs-toggle="tooltip"' in html
+        assert "tooltip-icon" in html
+
+    def test_no_tooltip_icon_when_tooltip_empty(self, rf):
+        """Fields with empty tooltip should not render the info icon."""
+        from django.template.loader import render_to_string
+
+        from apps.submissions.forms import SubmissionForm
+
+        request = rf.get("/")
+        form = SubmissionForm()
+        # comments has tooltip: "" in the YAML
+        html = render_to_string(
+            "submissions/partials/field.html",
+            {"field": form["comments"], "required": False},
+            request=request,
+        )
+        assert "tooltip-icon" not in html
+
+    # -- Accessibility: fieldset/legend for multi-choice widgets --
+
+    def test_radio_fields_render_fieldset(self, rf):
+        """RadioSelect fields should render inside <fieldset> with <legend>."""
+        from django.template.loader import render_to_string
+
+        from apps.submissions.forms import SubmissionForm
+
+        request = rf.get("/")
+        form = SubmissionForm()
+        html = render_to_string(
+            "submissions/partials/field.html",
+            {"field": form["register_as_elixir"], "required": True},
+            request=request,
+        )
+        assert "<fieldset" in html
+        assert "<legend" in html
+        assert "<label" not in html.split("<legend")[0].split("<fieldset")[-1]
+
+    def test_checkbox_group_renders_fieldset(self, rf):
+        """CheckboxSelectMultiple fields should render inside <fieldset>."""
+        from django.template.loader import render_to_string
+
+        from apps.submissions.forms import SubmissionForm
+
+        request = rf.get("/")
+        form = SubmissionForm()
+        html = render_to_string(
+            "submissions/partials/field.html",
+            {"field": form["service_categories"], "required": True},
+            request=request,
+        )
+        assert "<fieldset" in html
+        assert "<legend" in html
+
+    def test_text_input_does_not_render_fieldset(self, rf):
+        """Standard text inputs should use <label>, not <fieldset>."""
+        from django.template.loader import render_to_string
+
+        from apps.submissions.forms import SubmissionForm
+
+        request = rf.get("/")
+        form = SubmissionForm()
+        html = render_to_string(
+            "submissions/partials/field.html",
+            {"field": form["service_name"], "required": True},
+            request=request,
+        )
+        assert "<fieldset" not in html
+        assert "<legend" not in html
+        assert "<label" in html
+
+
+# ---------------------------------------------------------------------------
+# Email texts YAML — subject lines and status messages
+# ---------------------------------------------------------------------------
+
+
+class TestEmailTextsYAML:
+    """Validate the email_texts.yaml structure so CI catches mistakes."""
+
+    def test_yaml_loads_without_error(self):
+        from apps.submissions.tasks import _EMAIL_TEXTS
+
+        assert isinstance(_EMAIL_TEXTS, dict)
+        assert len(_EMAIL_TEXTS) > 0
+
+    def test_yaml_is_valid_syntax(self):
+        """Catch YAML syntax errors with a clear message."""
+        import yaml
+        from pathlib import Path
+
+        path = (
+            Path(__file__).resolve().parent.parent / "apps/submissions/email_texts.yaml"
+        )
+        with open(path, encoding="utf-8") as f:
+            try:
+                data = yaml.safe_load(f)
+            except yaml.YAMLError as exc:
+                pytest.fail(
+                    f"email_texts.yaml has a YAML syntax error:\n{exc}\n\n"
+                    "Fix: check for incorrect indentation, missing quotes, "
+                    "or special characters that need quoting."
+                )
+        assert isinstance(data, dict), (
+            "email_texts.yaml must be a YAML mapping, not a list or scalar."
+        )
+
+    def test_subjects_section_exists_with_required_keys(self):
+        from apps.submissions.tasks import _EMAIL_TEXTS
+
+        subjects = _EMAIL_TEXTS.get("subjects")
+        assert isinstance(subjects, dict), (
+            "email_texts.yaml must have a 'subjects' mapping.\n"
+            "Fix: add a 'subjects:' section with event-keyed subject lines."
+        )
+        required = {"created", "status_changed", "updated", "submitter_status"}
+        missing = required - set(subjects.keys())
+        assert not missing, (
+            f"'subjects' is missing required key(s): {missing}.\n"
+            f"Fix: add the missing subject line(s) under 'subjects:' in email_texts.yaml."
+        )
+
+    def test_status_messages_section_exists_with_required_keys(self):
+        from apps.submissions.tasks import _EMAIL_TEXTS
+
+        messages = _EMAIL_TEXTS.get("status_messages")
+        assert isinstance(messages, dict), (
+            "email_texts.yaml must have a 'status_messages' mapping.\n"
+            "Fix: add a 'status_messages:' section with status-keyed messages."
+        )
+        required = {"approved", "rejected", "under_review", "default"}
+        missing = required - set(messages.keys())
+        assert not missing, (
+            f"'status_messages' is missing required key(s): {missing}.\n"
+            f"Fix: add the missing message(s) under 'status_messages:' in email_texts.yaml."
+        )
+
+    def test_all_values_are_strings(self):
+        from apps.submissions.tasks import _EMAIL_TEXTS
+
+        for section_name in ("subjects", "status_messages"):
+            section = _EMAIL_TEXTS.get(section_name, {})
+            for key, value in section.items():
+                assert isinstance(value, str), (
+                    f"'{section_name}.{key}' must be a string, "
+                    f"got {type(value).__name__}: {value!r}.\n"
+                    f"Fix: wrap the value in quotes."
+                )
+
+    def test_subject_placeholders_are_valid(self):
+        """Subject templates should only use known placeholders."""
+        from apps.submissions.tasks import _EMAIL_TEXTS
+
+        allowed_placeholders = {"service_name", "status"}
+        for key, template in _EMAIL_TEXTS.get("subjects", {}).items():
+            # Try formatting with all allowed placeholders
+            try:
+                template.format(**{p: "test" for p in allowed_placeholders})
+            except KeyError as exc:
+                pytest.fail(
+                    f"'subjects.{key}' uses unknown placeholder {exc}.\n"
+                    f"Allowed placeholders: {allowed_placeholders}"
+                )
+
+    def test_email_subject_helper(self):
+        """_email_subject returns formatted strings."""
+        from apps.submissions.tasks import _email_subject
+
+        result = _email_subject(
+            "created", service_name="TestService", status="Approved"
+        )
+        assert "TestService" in result
+
+    def test_status_message_helper(self):
+        """_status_message returns the correct message for each status."""
+        from apps.submissions.tasks import _status_message
+
+        msg = _status_message("approved")
+        assert "approved" in msg.lower()
+
+        msg = _status_message("unknown_status")
+        assert msg  # Should return the "default" message

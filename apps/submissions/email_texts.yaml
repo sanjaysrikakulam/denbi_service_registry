@@ -1,0 +1,37 @@
+# =============================================================================
+# Email Notification Texts
+# =============================================================================
+#
+# This file controls email subject lines and status-specific messages sent
+# to submitters when their registration status changes.  Edit the values
+# below, rebuild the container image, and deploy.
+#
+# Dynamic placeholders (filled automatically at send time):
+#   {service_name}  — the name of the service
+#   {status}        — human-readable status (e.g. "Approved", "Rejected")
+#
+# Rules:
+#   - Use plain text only — no HTML.
+#   - Keep subject lines short (< 80 characters after placeholder expansion).
+#   - The "message" fields appear in both HTML and plain-text emails.
+#
+
+# ── Subject Lines ────────────────────────────────────────────────────────────
+# These appear in the email subject line for each event type.
+
+subjects:
+  created: "[de.NBI Service Registry] New service submitted: {service_name}"
+  status_changed: "[de.NBI Service Registry] Status changed to '{status}': {service_name}"
+  updated: "[de.NBI Service Registry] Update: {service_name}"
+  submitter_status: "Your service registration status: {status} — {service_name}"
+
+# ── Submitter Status Messages ────────────────────────────────────────────────
+# Shown in the status update email sent to the submitter.
+# Each status key matches a ServiceSubmission.status choice.
+# The "default" entry is used for any status not explicitly listed.
+
+status_messages:
+  approved: "Your service has been approved and is now registered in the de.NBI Service Registry. Thank you for your submission."
+  rejected: "Your service registration was not approved at this time. If you have questions, please contact us."
+  under_review: "Your submission is currently under review. We will notify you once a decision has been made."
+  default: "If you have questions about your submission, please contact us."

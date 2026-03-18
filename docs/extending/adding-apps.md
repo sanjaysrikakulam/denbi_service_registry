@@ -436,7 +436,8 @@ mypy apps/ config/
 - `is_active` soft-delete on all reference data
 - `created_at = DateTimeField(auto_now_add=True)` and `updated_at = DateTimeField(auto_now=True)` on mutable entities
 - `__str__` must return a human-readable string
-- All fields need `help_text`
+- All fields need `help_text` (model-level `help_text` is overridden by `apps/submissions/form_texts.yaml` for the registration form)
+- Email subject lines and status messages live in `apps/submissions/email_texts.yaml` — update if adding new notification types
 
 ### Serialiser conventions
 - Always use an explicit `fields = [...]` list — never `fields = "__all__"`

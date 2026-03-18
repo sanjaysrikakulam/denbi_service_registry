@@ -151,16 +151,31 @@ REDIS_PORT=6379
 ### Reverse proxy / real IP
 
 ```bash
-# IP (or comma-separated list / CIDR range) of the nginx server.
-# Gunicorn only extracts the real client IP from X-Forwarded-For when the
-# connection comes from a trusted address.  Without this, Django records the
-# proxy's IP instead of the real client IP in logs and admin access-attempt records.
+# IP(s) of the direct upstream that connects to Gunicorn — i.e. the machine
+# whose TCP connection Gunicorn sees. Gunicorn rewrites REMOTE_ADDR (and its
+# own access log) from X-Forwarded-For only when the connection arrives from a
+# trusted address listed here. Comma-separated; CIDR ranges are accepted.
 #
-# Same-machine setup:   FORWARDED_ALLOW_IPS=127.0.0.1
-# Separate nginx server: FORWARDED_ALLOW_IPS=192.168.232.10
-# Internal subnet:       FORWARDED_ALLOW_IPS=192.168.232.0/24
+# Same-machine proxy → Gunicorn:          FORWARDED_ALLOW_IPS=127.0.0.1
+# Docker bridge (proxy on host):          FORWARDED_ALLOW_IPS=172.17.0.0/16
+# Remote proxy server (internal IP):      FORWARDED_ALLOW_IPS=192.168.x.x
 FORWARDED_ALLOW_IPS=127.0.0.1
 ```
+
+!!! note "Two separate concerns: Gunicorn log vs. application IP"
+    **`FORWARDED_ALLOW_IPS`** only affects Gunicorn's own access log (stdout).
+    It has no effect on the IP that Django views or django-axes record.
+
+    **Application-level IP** (axes lockout log, `submission_ip` field) is resolved
+    by `django-ipware` reading the `X-Real-IP` header, which the upstream proxy sets
+    to `$remote_addr` — the real client IP.  This path is independent of
+    `FORWARDED_ALLOW_IPS`.
+
+    For the application IP to be correct, two things must be true:
+
+    1. The upstream proxy sets `proxy_set_header X-Real-IP $remote_addr` (already
+       in `nginx/host/service-registry.bi.denbi.de.conf`).
+    2. `django-ipware` is installed (listed in `requirements/base.txt`).
 
 ### Security
 
