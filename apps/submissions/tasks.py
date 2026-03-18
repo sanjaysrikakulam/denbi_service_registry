@@ -106,7 +106,6 @@ def send_submission_notification(
         event,
         service_name=submission.service_name,
         status=submission.get_status_display(),
-        
     )
 
     context = {
