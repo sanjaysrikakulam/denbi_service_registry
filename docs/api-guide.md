@@ -20,17 +20,19 @@ Both Swagger UI (swagger-ui-dist 5.18.2) and ReDoc (2.2.0) assets are vendored l
 
 Two authentication schemes are supported.
 
-### Admin Token (`Authorization: Token <key>`)
+### Admin Token
+
+`Authorization: Token <key>`
 
 For staff users and trusted integrations. Grants access to the full submission list
 and all reference data endpoints.
 
-**Creating a token:**
+**Creating a token** (see [Admin Guide → Issuing Admin API Tokens](admin-guide.md#issuing-admin-api-tokens)):
 
 1. Log in to `/admin-denbi/`
 2. Go to **Auth Token → Tokens → Add Token**
 3. Select the staff user and save
-4. Copy the key — it is shown in full on the token detail page
+4. Copy the key — it is shown once in full and then masked
 
 **Using it:**
 
@@ -39,7 +41,9 @@ curl https://service-registry.bi.denbi.de/api/v1/submissions/ \
   -H "Authorization: Token d876555a570df89909058eeeb6d88f4b814a81a1"
 ```
 
-### Submission API Key (`Authorization: ApiKey <key>`)
+### Submission API Key
+
+`Authorization: ApiKey <key>`
 
 Issued when a service is registered (via the web form or `POST /api/v1/submissions/`).
 Scoped to a single submission. The plaintext key is shown **once** — store it securely.
@@ -62,9 +66,9 @@ curl https://service-registry.bi.denbi.de/api/v1/submissions/<id>/ \
 
 ## Endpoints
 
-### `POST /api/v1/submissions/` — Register a service
+### Register a service
 
-No authentication required. Submits a new service registration.
+`POST /api/v1/submissions/` — no authentication required. Submits a new service registration.
 
 **Response (201):**
 
@@ -81,9 +85,9 @@ No authentication required. Submits a new service registration.
 
 ---
 
-### `GET /api/v1/submissions/` — List all submissions
+### List all submissions
 
-Requires admin Token. Returns paginated full detail for all submissions.
+`GET /api/v1/submissions/` — requires admin Token. Returns paginated full detail for all submissions.
 
 **Query parameters:**
 
@@ -119,16 +123,16 @@ Requires admin Token. Returns paginated full detail for all submissions.
 
 ---
 
-### `GET /api/v1/submissions/{id}/` — Retrieve your submission
+### Retrieve a submission
 
-Requires `ApiKey`. Returns your own submission in full detail.
+`GET /api/v1/submissions/{id}/` — requires `ApiKey`. Returns your own submission in full detail.
 Returns 403 if the key does not belong to this submission.
 
 ---
 
-### `PATCH /api/v1/submissions/{id}/` — Update your submission
+### Update a submission
 
-Requires `ApiKey` with `write` scope. Partial update — include only changed fields.
+`PATCH /api/v1/submissions/{id}/` — requires `ApiKey` with `write` scope. Partial update — include only changed fields.
 
 Updating an approved submission resets its status to `submitted` for re-review.
 
@@ -143,7 +147,7 @@ Full `PUT` is not supported — use `PATCH`.
 
 ---
 
-### Reference data — Categories, Service Centres, PIs
+### Reference data {#reference-data-categories-service-centres-pis}
 
 All reference data endpoints require an admin Token. All three resources support
 full CRUD and follow the same pattern.
@@ -226,15 +230,15 @@ curl -X PATCH https://service-registry.bi.denbi.de/api/v1/categories/<id>/ \
   -d '{"is_active": true}'
 ```
 
-### `GET /api/v1/edam/` — EDAM ontology terms
+### EDAM ontology terms
 
-**Public** — no authentication required. Returns all non-obsolete EDAM terms.
+`GET /api/v1/edam/` — public, no authentication required. Returns all non-obsolete EDAM terms.
 
 Filter: `?branch=topic|operation|data|format`, `?q=<search>`
 
-### `GET /api/v1/edam/{accession}/` — EDAM term detail
+### EDAM term detail
 
-Public. Look up by accession (e.g. `topic_0091`) or UUID.
+`GET /api/v1/edam/{accession}/` — public. Look up by accession (e.g. `topic_0091`) or UUID.
 
 ---
 

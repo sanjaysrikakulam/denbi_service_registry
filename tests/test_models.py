@@ -186,7 +186,7 @@ class TestSubmissionValidation:
     def test_publications_valid_doi(self):
         from apps.submissions.models import _validate_publications
 
-        _validate_publications("10.1093/bioinformatics/btad123")
+        _validate_publications("10.1016/0022-2836(70)90057-4")
 
     def test_publications_rejects_garbage(self):
         from apps.submissions.models import _validate_publications

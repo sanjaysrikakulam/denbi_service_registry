@@ -13,13 +13,13 @@ Configuration is split into two files with a clear separation of concerns:
 
 ---
 
-## `config/site.toml` — Site settings
+## Site settings
 
-The single place for all non-secret, human-editable settings. Editing this file
-and restarting the containers is all that is needed to rebrand the registry for
-a different organisation.
+`config/site.toml` — the single place for all non-secret, human-editable settings.
+Editing this file and restarting the containers is all that is needed to rebrand
+the registry for a different organisation.
 
-### `[site]` — Core identity
+### Core identity
 
 ```toml
 [site]
@@ -41,7 +41,7 @@ form_date    = "2026-02-14"
 | `favicon_url`                | Favicon URL. Same three options as `logo_url`. Empty string auto-detects `static/img/favicon.ico` / `.png` / `.svg`. If nothing is found, no `<link rel="icon">` is rendered                       |
 | `form_version` / `form_date` | Shown in the registration form header                                                                                                                                                              |
 
-### `[contact]` — Contact details
+### Contact details
 
 ```toml
 [contact]
@@ -52,7 +52,7 @@ organisation = "German Network for Bioinformatics Infrastructure"
 
 `contact.email` appears in the form sidebar, update page, success page, email footers, OpenAPI metadata, and the site footer.
 
-### `[email]` — Sender identity
+### Sender identity
 
 ```toml
 [email]
@@ -62,7 +62,7 @@ subject_prefix = "[de.NBI Registry]"
 
 `from_address` is overridden by the `EMAIL_FROM` environment variable if set. SMTP credentials stay in `.env`.
 
-### `[links]` — External URLs
+### External URLs
 
 ```toml
 [links]
@@ -75,7 +75,7 @@ kpi_cheatsheet  = "https://www.denbi.de/images/Service/20210624_KPI_Cheat_Sheet_
 
 All links are rendered dynamically — changing a URL here updates it everywhere in the UI without touching template files.
 
-### `[api]` — OpenAPI metadata
+### OpenAPI metadata
 
 ```toml
 [api]
@@ -84,7 +84,7 @@ version      = "1.0.0"
 license_name = "MIT"
 ```
 
-### `[features]` — Feature flags
+### Feature flags
 
 ```toml
 [features]
@@ -92,7 +92,7 @@ biotools_prefill  = true   # Show bio.tools prefill banner on the form
 edam_annotations  = true   # Show EDAM ontology fields on the form
 ```
 
-### `[edam]` — EDAM ontology sync
+### EDAM ontology sync
 
 ```toml
 [edam]
@@ -101,7 +101,7 @@ owl_url = "https://edamontology.org/EDAM_stable.owl"
 
 Overridden by `EDAM_OWL_URL` in `.env`. Set to a local file path for air-gapped servers.
 
-### `[admin]` — Admin interface
+### Admin interface
 
 ```toml
 [admin]
@@ -112,9 +112,9 @@ Overridden by `ADMIN_URL_PREFIX` in `.env`. Changes the URL of the Django admin 
 
 ---
 
-## `.env` — Secrets and connection strings
+## Secrets and connection strings
 
-Copy `.env.example` to `.env` and fill in the required values. Every variable is documented below with its default.
+`.env` — copy `.env.example` to `.env` and fill in the required values. Every variable is documented below with its default.
 
 ### Required — startup fails without these
 

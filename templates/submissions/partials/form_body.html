@@ -3,7 +3,7 @@ Form body partial — shared by register.html and edit.html.
 Contains all section cards. The wrapping <form> tag and submit button
 are defined in the parent template so each can have its own action/labels.
 {% endcomment %}
-{% load i18n %}
+{% load i18n registry_tags %}
 
 <!-- bio.tools prefill banners -->
 {% if SITE.features.biotools_prefill %}
@@ -43,6 +43,7 @@ are defined in the parent template so each can have its own action/labels.
 <div class="card section-card mb-4" id="section-a">
   <div class="card-header"><span class="me-2">📋</span>A — General Information</div>
   <div class="card-body">
+    {% with desc=form.section_texts.a.description %}{% if desc %}<div class="section-description">{{ desc|linkify_description }}</div>{% endif %}{% endwith %}
     {% include "submissions/partials/field.html" with field=form.date_of_entry required=True %}
     <div class="row g-3">
       <div class="col-md-6">
@@ -61,6 +62,7 @@ are defined in the parent template so each can have its own action/labels.
 <div class="card section-card mb-4" id="section-b">
   <div class="card-header"><span class="me-2">🔬</span>B — Service Master Data</div>
   <div class="card-body">
+    {% with desc=form.section_texts.b.description %}{% if desc %}<div class="section-description">{{ desc|linkify_description }}</div>{% endif %}{% endwith %}
     {% include "submissions/partials/field.html" with field=form.service_name required=True %}
     {% include "submissions/partials/field.html" with field=form.service_description required=True %}
     {% include "submissions/partials/field.html" with field=form.year_established required=True %}
@@ -79,6 +81,7 @@ are defined in the parent template so each can have its own action/labels.
 <div class="card section-card mb-4" id="section-c">
   <div class="card-header"><span class="me-2">👥</span>C — Responsibilities &amp; Responsiveness</div>
   <div class="card-body">
+    {% with desc=form.section_texts.c.description %}{% if desc %}<div class="section-description">{{ desc|linkify_description }}</div>{% endif %}{% endwith %}
     {% include "submissions/partials/field.html" with field=form.responsible_pis required=True %}
     <div id="associated-partner-wrapper" style="display:none">
       {% include "submissions/partials/field.html" with field=form.associated_partner_note %}
@@ -100,6 +103,7 @@ are defined in the parent template so each can have its own action/labels.
 <div class="card section-card mb-4" id="section-d">
   <div class="card-header"><span class="me-2">🔗</span>D — Websites &amp; Links</div>
   <div class="card-body">
+    {% with desc=form.section_texts.d.description %}{% if desc %}<div class="section-description">{{ desc|linkify_description }}</div>{% endif %}{% endwith %}
     {% include "submissions/partials/field.html" with field=form.website_url required=True %}
     {% include "submissions/partials/field.html" with field=form.terms_of_use_url required=True %}
     {% include "submissions/partials/field.html" with field=form.license required=True %}
@@ -114,10 +118,7 @@ are defined in the parent template so each can have its own action/labels.
 <div class="card section-card mb-4" id="section-e">
   <div class="card-header"><span class="me-2">📊</span>E — Key Performance Indicators (KPIs)</div>
   <div class="card-body">
-    <p class="text-muted small">
-      KPI requirements depend on service category. See the
-      <a href="{{ SITE.links.kpi_cheatsheet }}" target="_blank" rel="noopener noreferrer">de.NBI KPI Compass</a> for guidance.
-    </p>
+    {% with desc=form.section_texts.e.description %}{% if desc %}<div class="section-description">{{ desc|linkify_description }}</div>{% endif %}{% endwith %}
     {% include "submissions/partials/field.html" with field=form.kpi_monitoring required=True %}
     <div id="kpi-start-year-wrapper" {% if form.kpi_monitoring.value == 'planned' %}style="display:none"{% endif %}>
       {% include "submissions/partials/field.html" with field=form.kpi_start_year required=True %}
@@ -129,6 +130,7 @@ are defined in the parent template so each can have its own action/labels.
 <div class="card section-card mb-4" id="section-f">
   <div class="card-header"><span class="me-2">🏷️</span>F — Search Tags, Discoverability &amp; Outreach</div>
   <div class="card-body">
+    {% with desc=form.section_texts.f.description %}{% if desc %}<div class="section-description">{{ desc|linkify_description }}</div>{% endif %}{% endwith %}
     {% include "submissions/partials/field.html" with field=form.keywords_uncited %}
     {% include "submissions/partials/field.html" with field=form.keywords_seo %}
     {% include "submissions/partials/field.html" with field=form.outreach_consent required=True %}
@@ -141,6 +143,7 @@ are defined in the parent template so each can have its own action/labels.
 <div class="card section-card mb-4" id="section-g">
   <div class="card-header"><span class="me-2">🔒</span>G — Data Protection &amp; Consent</div>
   <div class="card-body">
+    {% with desc=form.section_texts.g.description %}{% if desc %}<div class="section-description">{{ desc|linkify_description }}</div>{% endif %}{% endwith %}
     <p class="small">
       This form has been created by the de.NBI Office.
       Person-related data will exclusively be used by the de.NBI Administration Office

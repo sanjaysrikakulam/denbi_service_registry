@@ -13,19 +13,19 @@ bioinformatics service for inclusion in the [de.NBI services catalogue](https://
 
 ## Registering a New Service
 
-1. Go to **/register/** and fill in the form. All fields marked **(*)** are required.
+1. Go to **/register/** and fill in the form. All fields marked **(\*)** are required.
 
 2. Work through each section:
 
-   | Section | What you need |
-   |---------|--------------|
-   | A — General | Today's date, your name and affiliation |
-   | B — Service Data | Service name, description, year, category, EDAM annotations, publications |
-   | C — Responsibilities | Responsible PI(s), host institute, contact emails |
-   | D — Links | Service website, terms of use, license, optional repository and registry links |
-   | E — KPIs | Whether KPI monitoring is in place |
-   | F — Discoverability | Keywords for search and citation tracking |
-   | G — Consent | Data protection consent (required to submit) |
+   | Section              | What you need                                                                  |
+   | -------------------- | ------------------------------------------------------------------------------ |
+   | A — General          | Today's date, your name and affiliation                                        |
+   | B — Service Data     | Service name, description, year, category, EDAM annotations, publications      |
+   | C — Responsibilities | Responsible PI(s), host institute, contact emails                              |
+   | D — Links            | Service website, terms of use, license, optional repository and registry links |
+   | E — KPIs             | Whether KPI monitoring is in place                                             |
+   | F — Discoverability  | Keywords for search and citation tracking                                      |
+   | G — Consent          | Data protection consent (required to submit)                                   |
 
 3. Click **Submit Registration**.
 
@@ -51,16 +51,21 @@ bioinformatics service for inclusion in the [de.NBI services catalogue](https://
 ## Field Help
 
 ### Publications (PMIDs/DOIs)
+
 Enter comma-separated PMIDs (PubMed IDs, digits only) or DOIs (starting with `10.`):
+
+```text
+12345678, 10.1016/0022-2836(70)90057-4, 98765432
 ```
-12345678, 10.1093/bioinformatics/btad123, 98765432
-```
+
 PMIDs are required for ELIXIR impact assessment.
 
 ### Service Categories
+
 Select all that apply by checking the relevant boxes. Multiple selections are supported.
 
 ### Toolbox
+
 If your service is part of a de.NBI toolbox, select **Yes** and enter the toolbox name.
 If you select "Associated partner" as a PI, you must provide their name and affiliation.
 
@@ -70,14 +75,16 @@ If you select "Associated partner" as a PI, you must provide their name and affi
 your service makes it discoverable in bio.tools, the ELIXIR Tools & Data Services Registry,
 and other platforms. These fields are **optional but strongly recommended**.
 
-**EDAM Topics** describe the *scientific domain* of your service. Examples:
+**EDAM Topics** describe the _scientific domain_ of your service. Examples:
+
 - Proteomics
 - Genomics
 - Structural biology
 - Metagenomics
 - Metabolomics
 
-**EDAM Operations** describe *what your service does computationally*. Examples:
+**EDAM Operations** describe _what your service does computationally_. Examples:
+
 - Sequence alignment
 - Protein structure prediction
 - Visualisation
@@ -85,6 +92,7 @@ and other platforms. These fields are **optional but strongly recommended**.
 - Database search
 
 **How to use the field:**
+
 1. Click the search box and start typing — e.g. "prote" will filter to all terms containing that string.
 2. Select a term from the dropdown. The term label and its EDAM accession (e.g. `topic_0121`) are shown.
 3. You can select up to 6 terms per field.
@@ -104,6 +112,7 @@ The form will automatically look up your tool in bio.tools and, if found, show a
 > Review and adjust before saving.
 
 Click **Apply prefill** to populate the following fields from bio.tools data:
+
 - Service name (if currently empty)
 - Service description (if currently empty)
 - Website URL (if currently empty)
@@ -125,14 +134,14 @@ All URLs must use **https://**. Plain http:// URLs are not accepted.
 
 Domain-specific URL fields enforce a prefix match in addition to the HTTPS requirement:
 
-| Field | Required prefix |
-|---|---|
-| Website URL | `https://` (any domain) |
-| Terms of use URL | `https://` (any domain) |
-| GitHub repository | `https://github.com/` |
-| bio.tools entry | `https://bio.tools/` |
+| Field             | Required prefix            |
+| ----------------- | -------------------------- |
+| Website URL       | `https://` (any domain)    |
+| Terms of use URL  | `https://` (any domain)    |
+| GitHub repository | `https://github.com/`      |
+| bio.tools entry   | `https://bio.tools/`       |
 | FAIRsharing entry | `https://fairsharing.org/` |
-| Other registry | `https://` (any domain) |
+| Other registry    | `https://` (any domain)    |
 
 **FAIRsharing** (`https://fairsharing.org/`) is a curated resource of data standards, policies,
 and databases. If your service or the data formats it uses are listed in FAIRsharing,
@@ -140,12 +149,13 @@ linking here helps with discoverability and FAIR compliance metadata.
 
 ### Outreach and Survey fields (Section F)
 
-| Field | What it means |
-|---|---|
-| **Outreach consent** | You agree to de.NBI potentially showcasing your service on social media or newsletters. You can withdraw this consent at any time by editing your submission. |
-| **Survey participation** | You are willing to be contacted for de.NBI user surveys (e.g. annual usage statistics). Defaults to Yes. |
+| Field                    | What it means                                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Outreach consent**     | You agree to de.NBI potentially showcasing your service on social media or newsletters. You can withdraw this consent at any time by editing your submission. |
+| **Survey participation** | You are willing to be contacted for de.NBI user surveys (e.g. annual usage statistics). Defaults to Yes.                                                      |
 
 ### License
+
 Select the license that governs how users may use your service.
 Select "Not applicable" for services without a software license (e.g. pure databases).
 
@@ -155,13 +165,13 @@ Select "Not applicable" for services without a software license (e.g. pure datab
 
 Your submission moves through these states:
 
-| Status | Meaning |
-|---|---|
-| **Draft** | Saved locally but not yet submitted. Draft submissions older than 30 days are automatically deleted. |
-| **Submitted** | Form submitted. The de.NBI administration office has been notified. |
-| **Under Review** | Actively being reviewed by the service coordination team. |
-| **Approved** | Your service has been accepted and will appear in the de.NBI services catalogue. |
-| **Rejected** | The submission was not accepted. You will receive an email explaining why. You may edit and resubmit. |
+| Status           | Meaning                                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------------------- |
+| **Draft**        | Saved locally but not yet submitted. Draft submissions older than 30 days are automatically deleted.  |
+| **Submitted**    | Form submitted. The de.NBI administration office has been notified.                                   |
+| **Under Review** | Actively being reviewed by the service coordination team.                                             |
+| **Approved**     | Your service has been accepted and will appear in the de.NBI services catalogue.                      |
+| **Rejected**     | The submission was not accepted. You will receive an email explaining why. You may edit and resubmit. |
 
 If you edit a submission that was already **Approved**, the status resets to **Submitted** and the administration office is notified to re-review your changes.
 

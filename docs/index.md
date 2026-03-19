@@ -33,7 +33,7 @@ A structured registration platform for de.NBI and ELIXIR-DE bioinformatics servi
 
 - :material-api: **REST API**
 
-    Full CRUD access with token and API-key authentication. OpenAPI schema at `/api/schema/`.
+    Full CRUD access with token and API-key authentication. Interactive docs at `/api/docs/` (Swagger UI) and `/api/redoc/` (ReDoc). Machine-readable OpenAPI schema at `/api/schema/`.
 
 - :material-shield-check: **Admin portal**
 

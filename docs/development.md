@@ -299,6 +299,54 @@ Open browser DevTools → Network tab. All requests should resolve to `localhost
 
 ---
 
+## Custom template tags
+
+Custom template tags and filters live in
+`apps/submissions/templatetags/registry_tags.py` and are loaded in templates with
+`{% load registry_tags %}`.
+
+### Available filters
+
+#### `linkify_description`
+
+Renders a section description string from `form_texts.yaml` as safe HTML.
+Use this filter (not Django's built-in `urlize`) for all section description output.
+
+| Input syntax | Output |
+|---|---|
+| `[link text](https://example.com)` | `<a href="https://example.com">link text</a>` |
+| `https://example.com` | auto-linked anchor |
+| Blank line (`\n\n`) | paragraph break — wraps each block in `<p>` |
+| Single newline (`\n`, using YAML `\|` block) | `<br>` |
+| Raw `<html>` | escaped — never rendered as markup |
+
+Only `http://` and `https://` schemes are accepted for links. `javascript:` and other
+schemes in `[text](...)` syntax are not matched and pass through as escaped plain text.
+
+**Template usage:**
+
+```django
+{% load registry_tags %}
+<div class="section-description">{{ desc|linkify_description }}</div>
+```
+
+**Extending or testing the filter:**
+
+The filter is unit-tested in `tests/test_template_tags.py` (`TestLinkifyDescriptionFilter`).
+Add a new test there whenever you extend the filter's behaviour.
+Integration tests that render `form_body.html` or `register.html` with patched YAML
+data live in `tests/test_forms.py` (`TestSectionDescriptionsYAML`).
+
+### Available simple tags
+
+| Tag | Purpose |
+|---|---|
+| `{% site_logo_url %}` | Returns logo URL from `site.toml`, or empty string |
+| `{% site_favicon_url %}` | Returns favicon URL (auto-detects `static/img/favicon.*` as fallback) |
+| `{% site_setting section key %}` | Generic accessor for any `site.toml` value |
+
+---
+
 ## Adding a feature
 
 1. Create a branch: `git checkout -b feature/my-feature`

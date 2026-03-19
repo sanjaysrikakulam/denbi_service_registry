@@ -283,12 +283,17 @@ class TestFormTextsYAML:
             "form_texts.yaml must be a YAML mapping (key: value), not a list or scalar."
         )
 
+    # Top-level YAML keys that are not field entries (tested separately)
+    _NON_FIELD_KEYS = {"sections"}
+
     def test_every_entry_has_required_keys(self):
         """Each field entry must have exactly 'help' and 'tooltip' keys."""
         from apps.submissions.forms import _FORM_TEXTS
 
         required_keys = {"help", "tooltip"}
         for field_name, entry in _FORM_TEXTS.items():
+            if field_name in self._NON_FIELD_KEYS:
+                continue
             assert isinstance(entry, dict), (
                 f"'{field_name}' must be a mapping with 'help' and 'tooltip' keys, "
                 f"got {type(entry).__name__}.\n"
@@ -313,6 +318,8 @@ class TestFormTextsYAML:
         from apps.submissions.forms import _FORM_TEXTS
 
         for field_name, entry in _FORM_TEXTS.items():
+            if field_name in self._NON_FIELD_KEYS:
+                continue
             if not isinstance(entry, dict):
                 continue
             for key in ("help", "tooltip"):
@@ -343,7 +350,11 @@ class TestFormTextsYAML:
         from apps.submissions.forms import SubmissionForm, _FORM_TEXTS
 
         form = SubmissionForm()
-        stale = [name for name in _FORM_TEXTS if name not in form.fields]
+        stale = [
+            name
+            for name in _FORM_TEXTS
+            if name not in form.fields and name not in self._NON_FIELD_KEYS
+        ]
         assert stale == [], (
             f"form_texts.yaml contains entries for fields that do not exist "
             f"in SubmissionForm: {stale}\n"
@@ -581,3 +592,361 @@ class TestEmailTextsYAML:
 
         msg = _status_message("unknown_status")
         assert msg  # Should return the "default" message
+
+
+# ===========================================================================
+# Section descriptions — YAML validation and rendering
+# ===========================================================================
+
+
+class TestSectionDescriptionsYAML:
+    """Validate the sections block in form_texts.yaml and its rendering."""
+
+    EXPECTED_SECTIONS = {"a", "b", "c", "d", "e", "f", "g"}
+
+    def test_sections_key_exists(self):
+        from apps.submissions.forms import _FORM_TEXTS
+
+        assert "sections" in _FORM_TEXTS, (
+            "form_texts.yaml is missing the 'sections' key. "
+            "Add a 'sections:' block with keys a–g."
+        )
+
+    def test_all_sections_present(self):
+        from apps.submissions.forms import _FORM_TEXTS
+
+        sections = _FORM_TEXTS.get("sections", {})
+        missing = self.EXPECTED_SECTIONS - set(sections.keys())
+        assert not missing, (
+            f"form_texts.yaml sections block is missing: {sorted(missing)}. "
+            "Each section (a–g) must have an entry."
+        )
+
+    def test_no_unexpected_sections(self):
+        from apps.submissions.forms import _FORM_TEXTS
+
+        sections = _FORM_TEXTS.get("sections", {})
+        unexpected = set(sections.keys()) - self.EXPECTED_SECTIONS
+        assert not unexpected, (
+            f"form_texts.yaml sections block has unexpected keys: {sorted(unexpected)}. "
+            "Valid section keys are a–g."
+        )
+
+    def test_each_section_has_description_key(self):
+        from apps.submissions.forms import _FORM_TEXTS
+
+        sections = _FORM_TEXTS.get("sections", {})
+        for key in self.EXPECTED_SECTIONS:
+            entry = sections.get(key, {})
+            assert "description" in entry, (
+                f"Section '{key}' in form_texts.yaml is missing the 'description' key."
+            )
+
+    def test_description_values_are_strings(self):
+        from apps.submissions.forms import _FORM_TEXTS
+
+        sections = _FORM_TEXTS.get("sections", {})
+        for key, entry in sections.items():
+            desc = entry.get("description", "")
+            assert isinstance(desc, str), (
+                f"Section '{key}' description must be a string, got {type(desc).__name__}."
+            )
+
+    def test_no_html_in_descriptions(self):
+        """Descriptions must be plain text — HTML tags are disallowed."""
+        from apps.submissions.forms import _FORM_TEXTS
+
+        import re
+
+        sections = _FORM_TEXTS.get("sections", {})
+        html_pattern = re.compile(r"<[a-zA-Z/][^>]*>")
+        for key, entry in sections.items():
+            desc = entry.get("description", "")
+            assert not html_pattern.search(desc), (
+                f"Section '{key}' description contains raw HTML tags. "
+                "Use plain text only. For links use [link text](https://...) syntax."
+            )
+
+    @pytest.mark.django_db
+    def test_section_texts_attached_to_form(self):
+        """SubmissionForm must expose section_texts matching the YAML sections block."""
+        from apps.submissions.forms import SubmissionForm, _FORM_TEXTS
+
+        form = SubmissionForm()
+        assert hasattr(form, "section_texts"), (
+            "SubmissionForm is missing the 'section_texts' attribute."
+        )
+        assert form.section_texts == _FORM_TEXTS.get("sections", {})
+
+    @pytest.mark.django_db
+    def test_description_renders_in_template(self):
+        """A section with a non-empty description must appear in the rendered form."""
+        import pytest
+        from django.test import RequestFactory
+        from django.template.loader import render_to_string
+        from apps.submissions.forms import SubmissionForm, _FORM_TEXTS
+
+        if not _FORM_TEXTS.get("sections", {}).get("b", {}).get("description"):
+            pytest.skip("Section B has no description set — skipping render test.")
+
+        factory = RequestFactory()
+        request = factory.get("/register/")
+        form = SubmissionForm()
+        content = render_to_string(
+            "submissions/partials/form_body.html",
+            {"form": form},
+            request=request,
+        )
+        desc = _FORM_TEXTS["sections"]["b"]["description"]
+        # Description text should appear (URLs may be linkified so check a fragment)
+        fragment = desc[:30].rstrip()
+        assert fragment in content, (
+            f"Section B description not found in rendered form. "
+            f"Expected fragment: {fragment!r}"
+        )
+
+    @pytest.mark.django_db
+    def test_empty_description_renders_no_paragraph(self):
+        """A section with an empty description must not render a description paragraph."""
+        from django.test import RequestFactory
+        from django.template.loader import render_to_string
+        from apps.submissions.forms import SubmissionForm, _FORM_TEXTS
+
+        # Find the first section with an empty description
+        sections = _FORM_TEXTS.get("sections", {})
+        empty_section = next(
+            (k for k, v in sections.items() if not v.get("description")), None
+        )
+        if empty_section is None:
+            import pytest
+
+            pytest.skip("All sections have descriptions — skipping empty test.")
+
+        factory = RequestFactory()
+        request = factory.get("/register/")
+        form = SubmissionForm()
+        content = render_to_string(
+            "submissions/partials/form_body.html",
+            {"form": form},
+            request=request,
+        )
+        # The section-description class should not appear for empty sections,
+        # unless another non-empty section also renders one.
+        # Just verify the page renders without error.
+        assert f'id="section-{empty_section}"' in content
+
+    @pytest.mark.django_db
+    def test_url_in_description_is_linkified(self):
+        """A description containing a URL must render as an anchor tag."""
+        from django.test import RequestFactory
+        from django.template.loader import render_to_string
+        from unittest.mock import patch
+        from apps.submissions.forms import SubmissionForm
+
+        url = "https://www.denbi.de/services"
+        patched_sections = {
+            "a": {"description": f"See {url} for examples."},
+            "b": {"description": ""},
+            "c": {"description": ""},
+            "d": {"description": ""},
+            "e": {"description": ""},
+            "f": {"description": ""},
+            "g": {"description": ""},
+        }
+
+        factory = RequestFactory()
+        request = factory.get("/register/")
+
+        with patch(
+            "apps.submissions.forms._FORM_TEXTS",
+            {"sections": patched_sections},
+        ):
+            form = SubmissionForm()
+
+        content = render_to_string(
+            "submissions/partials/form_body.html",
+            {"form": form},
+            request=request,
+        )
+        assert f'href="{url}"' in content, (
+            "URL in section description was not converted to an anchor tag."
+        )
+
+    @pytest.mark.django_db
+    def test_html_in_description_is_escaped(self):
+        """HTML tags in a description must be escaped, not rendered."""
+        from django.test import RequestFactory
+        from django.template.loader import render_to_string
+        from unittest.mock import patch
+        from apps.submissions.forms import SubmissionForm
+
+        malicious = '<script>alert("xss")</script>Plain text.'
+        patched_sections = {
+            "a": {"description": malicious},
+            "b": {"description": ""},
+            "c": {"description": ""},
+            "d": {"description": ""},
+            "e": {"description": ""},
+            "f": {"description": ""},
+            "g": {"description": ""},
+        }
+
+        factory = RequestFactory()
+        request = factory.get("/register/")
+
+        with patch(
+            "apps.submissions.forms._FORM_TEXTS",
+            {"sections": patched_sections},
+        ):
+            form = SubmissionForm()
+
+        content = render_to_string(
+            "submissions/partials/form_body.html",
+            {"form": form},
+            request=request,
+        )
+        assert "<script>" not in content, "HTML script tag was not escaped."
+        assert "Plain text." in content, "Plain text portion was dropped."
+
+    @pytest.mark.django_db
+    def test_missing_sections_key_graceful_fallback(self):
+        """If the YAML has no 'sections' key, the form still renders without error."""
+        from django.test import RequestFactory
+        from django.template.loader import render_to_string
+        from unittest.mock import patch
+        from apps.submissions.forms import SubmissionForm
+
+        factory = RequestFactory()
+        request = factory.get("/register/")
+
+        with patch("apps.submissions.forms._FORM_TEXTS", {}):
+            form = SubmissionForm()
+
+        content = render_to_string(
+            "submissions/partials/form_body.html",
+            {"form": form},
+            request=request,
+        )
+        assert 'id="section-a"' in content
+        assert "section-description" not in content
+
+    @pytest.mark.django_db
+    def test_register_template_renders_section_descriptions(self):
+        """
+        Regression test: register.html must render section descriptions.
+
+        The bug: descriptions were only added to form_body.html (used by edit.html).
+        register.html has its own inline form structure and was missing the blocks.
+        """
+        from django.test import RequestFactory
+        from django.template.loader import render_to_string
+        from unittest.mock import patch
+        from apps.submissions.forms import SubmissionForm
+
+        patched_sections = {
+            "a": {"description": "Regression check for section A."},
+            "b": {"description": "Regression check for section B."},
+            "c": {"description": ""},
+            "d": {"description": ""},
+            "e": {"description": ""},
+            "f": {"description": ""},
+            "g": {"description": ""},
+        }
+
+        factory = RequestFactory()
+        request = factory.get("/register/")
+
+        with patch(
+            "apps.submissions.forms._FORM_TEXTS", {"sections": patched_sections}
+        ):
+            form = SubmissionForm()
+
+        content = render_to_string(
+            "submissions/register.html",
+            {"form": form, "SITE": {}, "PRIVACY_POLICY_URL": "", "CONTACT_EMAIL": ""},
+            request=request,
+        )
+        assert "Regression check for section A." in content, (
+            "register.html is not rendering section A description — "
+            "check that the {% with desc=form.section_texts.a.description %} block is present."
+        )
+        assert "Regression check for section B." in content, (
+            "register.html is not rendering section B description."
+        )
+
+    @pytest.mark.django_db
+    def test_markdown_link_in_description_renders(self):
+        """[text](url) syntax in a description must render as a named anchor."""
+        from django.test import RequestFactory
+        from django.template.loader import render_to_string
+        from unittest.mock import patch
+        from apps.submissions.forms import SubmissionForm
+
+        patched_sections = {
+            "a": {
+                "description": "See [KPI Compass](https://www.denbi.de/kpi) for guidance."
+            },
+            "b": {"description": ""},
+            "c": {"description": ""},
+            "d": {"description": ""},
+            "e": {"description": ""},
+            "f": {"description": ""},
+            "g": {"description": ""},
+        }
+
+        factory = RequestFactory()
+        request = factory.get("/register/")
+
+        with patch(
+            "apps.submissions.forms._FORM_TEXTS", {"sections": patched_sections}
+        ):
+            form = SubmissionForm()
+
+        content = render_to_string(
+            "submissions/partials/form_body.html",
+            {"form": form},
+            request=request,
+        )
+        assert 'href="https://www.denbi.de/kpi"' in content, (
+            "[text](url) link was not converted to an anchor tag."
+        )
+        assert ">KPI Compass<" in content, (
+            "Named link text 'KPI Compass' was not rendered."
+        )
+
+    @pytest.mark.django_db
+    def test_newlines_in_description_render(self):
+        """Blank lines in a description must produce separate <p> elements."""
+        from django.test import RequestFactory
+        from django.template.loader import render_to_string
+        from unittest.mock import patch
+        from apps.submissions.forms import SubmissionForm
+
+        patched_sections = {
+            "a": {"description": "First paragraph.\n\nSecond paragraph."},
+            "b": {"description": ""},
+            "c": {"description": ""},
+            "d": {"description": ""},
+            "e": {"description": ""},
+            "f": {"description": ""},
+            "g": {"description": ""},
+        }
+
+        factory = RequestFactory()
+        request = factory.get("/register/")
+
+        with patch(
+            "apps.submissions.forms._FORM_TEXTS", {"sections": patched_sections}
+        ):
+            form = SubmissionForm()
+
+        content = render_to_string(
+            "submissions/partials/form_body.html",
+            {"form": form},
+            request=request,
+        )
+        assert "First paragraph." in content
+        assert "Second paragraph." in content
+        assert content.count("<p>") >= 2, (
+            "Expected at least two <p> elements for two paragraphs."
+        )

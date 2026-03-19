@@ -197,6 +197,13 @@ fieldset.mb-3 > legend {
   gap: .4rem;
 }
 .section-card .card-body { padding: 1.4rem 1.25rem 1rem; }
+.section-description {
+  font-size: 0.925rem;
+  color: #555;
+  margin-bottom: 1rem;
+}
+.section-description p { margin-bottom: 0.4rem; }
+.section-description p:last-child { margin-bottom: 0; }
 .section-card.has-section-error { border-left-color: var(--red) !important; }
 .section-card.has-section-error .card-header {
   background: var(--red-light) !important;

@@ -53,7 +53,7 @@ Exported files contain public fields only (no internal contact emails).
 
 Each submission detail page shows the **Submission API Keys** section. This shows all keys ever issued, their label, creation date, last-used timestamp, and whether they are active.
 
-### Three admin actions are available:
+### Available actions
 
 | Action | What it does |
 |--------|-------------|
@@ -61,7 +61,9 @@ Each submission detail page shows the **Submission API Keys** section. This show
 | **Reset key** | Revokes all keys and issues one new one. The new plaintext key is shown **once** in a banner. Communicate it to the submitter securely (e.g. encrypted email, phone). |
 | **Issue additional key** | Creates a new active key alongside existing ones. Useful for CI/CD pipelines or team members. Enter a descriptive label. |
 
-> **Security note:** Key plaintexts are shown once in the admin interface and are never stored anywhere. If you accidentally close the browser before noting the key, you must reset again.
+!!! warning "Key shown once only"
+    Key plaintexts are shown once in the admin interface and are never stored anywhere.
+    If you accidentally close the browser before copying the key, you must reset it again.
 
 All key operations are logged in Django's admin audit log (History tab on the submission).
 
@@ -101,36 +103,98 @@ Both interfaces support soft-delete: `DELETE` via the API (or setting `is_active
 
 ---
 
-## Customising Form Help Text & Tooltips
+## Customising Form Text & Section Descriptions
 
-The registration form displays two types of guidance for each field:
+The registration form text is controlled entirely from a single YAML file:
+`apps/submissions/form_texts.yaml`
+
+The file has two parts:
+
+### Section descriptions
+
+Each of the seven form sections (A–G) can show an introductory paragraph at the
+top of its card. Edit the `sections` block:
+
+```yaml
+sections:
+  a:
+    description: ""   # leave empty to show no description
+  b:
+    description: "Provide accurate information about your service."
+  # ... c through g
+```
+
+- Leave `description: ""` to hide the paragraph for that section.
+- No raw HTML — use the supported syntax below instead.
+
+#### Supported text formatting
+
+**Named hyperlinks** — use `[link text](https://...)` to display a clickable word or phrase
+instead of the full URL:
+
+```yaml
+  e:
+    description: >-
+      KPI requirements depend on your service category. See the
+      [de.NBI KPI Compass](https://www.denbi.de/images/Service/20210624_KPI_Cheat_Sheet_doi.pdf)
+      for guidance.
+```
+
+**Bare URLs** — plain `https://` links are also automatically converted to clickable links:
+
+```yaml
+  b:
+    description: "For examples see https://www.denbi.de/services"
+```
+
+**Multiple paragraphs** — use a YAML [literal block scalar](https://yaml.org/spec/1.2/spec.html#id2795688)
+(`|`) and leave a blank line between paragraphs:
+
+```yaml
+  f:
+    description: |
+      This section collects keywords and consent information.
+
+      The information helps us improve visibility in search engines and outreach activities.
+```
+
+**Line breaks within a paragraph** — also use the `|` block style; each newline becomes a `<br>`:
+
+```yaml
+  c:
+    description: |
+      Please name the PI responsible for this service.
+      Use the associated partner option if your PI is not listed.
+```
+
+!!! note "Folded (`>-`) vs literal (`|`) block scalars"
+    The `>-` style collapses line breaks into spaces — useful for long single-paragraph
+    descriptions that you want to wrap neatly in the file. Use `|` when you need actual
+    line breaks or blank-line paragraph splits to appear in the rendered output.
+
+For the full technical details of the rendering filter, see
+[Custom template tags — `linkify_description`](development.md#linkify_description) in the
+Developer Guide.
+
+### Field help text and tooltips
+
+Each field shows two types of guidance:
 
 - **Help text** — a short hint shown below the input field.
-- **Tooltip** — a detailed explanation shown when hovering or clicking the info icon next to the label.
-
-Both are controlled from a single YAML file:
-
-```
-apps/submissions/form_texts.yaml
-```
-
-### Editing the file
-
-Each field entry looks like this:
+- **Tooltip** — a detailed explanation shown when hovering or clicking the info icon.
 
 ```yaml
 service_name:
   help: "Official name of the service."
-  tooltip: "Use the canonical name as it appears on your website. Avoid abbreviations unless they are the official name."
+  tooltip: "Use the canonical name as it appears on your website."
 ```
 
-- Set `help: ""` to hide the help text below a field.
-- Set `tooltip: ""` to hide the info icon for that field.
-- Use plain text only — no HTML or Markdown.
+- Set `help: ""` to hide the help text for a field.
+- Set `tooltip: ""` to hide the info icon for a field.
 
 ### Deploying changes
 
-After editing `form_texts.yaml`, rebuild the container image and redeploy:
+After editing `form_texts.yaml`, rebuild and redeploy:
 
 ```bash
 docker compose build web

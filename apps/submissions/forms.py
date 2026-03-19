@@ -350,6 +350,9 @@ class SubmissionForm(forms.ModelForm):
                 field_obj.help_text = texts["help"]
             field_obj.tooltip = texts.get("tooltip", "")
 
+        # Expose section descriptions for template rendering
+        self.section_texts = _FORM_TEXTS.get("sections", {})
+
     # -- Cross-field validation --
 
     def clean_submitter_first_name(self) -> str:

@@ -64,6 +64,7 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
+      toc_depth: 3
 
 extra_javascript:
   - javascripts/tablesort.min.js
@@ -78,19 +79,19 @@ nav:
     - Development Setup: development.md
     - Configuration: configuration.md
     - Deployment: deployment.md
-  - Usage:
+  - User Guide:
     - User Guide: user-guide.md
-    - Admin Guide: admin-guide.md
     - API Reference: api-guide.md
-  - Operations:
+  - Admin Guide: admin-guide.md
+  - Developer Guide:
     - Architecture: architecture.md
-    - Rollout & Releases: rollout.md
-  - Development:
     - Testing: testing.md
     - Database Schema: database-schema.md
-    - Hosting the Docs: docs-hosting.md
     - Extending Models: extending/model-changes.md
     - Adding Apps: extending/adding-apps.md
+  - Reference:
+    - Rollout & Releases: rollout.md
+    - Hosting the Docs: docs-hosting.md
 
 extra:
   social:

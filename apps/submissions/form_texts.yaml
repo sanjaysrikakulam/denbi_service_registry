@@ -1,22 +1,51 @@
 # =============================================================================
-# Registration Form — Help Text & Tooltips
+# Registration Form — Help Text, Tooltips & Section Descriptions
 # =============================================================================
 #
-# This file controls the short help text and detailed tooltips shown on the
-# service registration form.  Edit the values below, rebuild the container
-# image, and deploy — no Python or template changes required.
+# This file controls three types of text shown on the registration form:
 #
-# Structure:
-#   field_name:
+#   sections:
+#     <a|b|c|d|e|f|g>:
+#       description: "Introductory paragraph shown at the top of the section card.
+#                     Leave empty ("") to show no description for that section."
+#
+#   <field_name>:
 #     help: "Short text shown below the field."
 #     tooltip: "Longer guidance shown when hovering/clicking the info icon."
 #
 # Rules:
-#   - Leave "help" empty ("") to hide the help text for that field.
-#   - Leave "tooltip" empty ("") to hide the info icon for that field.
+#   - Leave "description", "help", or "tooltip" empty ("") to hide them.
 #   - Keep "help" to one short sentence; put detail in "tooltip".
-#   - Use plain text only — no HTML or Markdown.
+#   - Use plain text only — no raw HTML.
+#   - Section descriptions support:
+#       [link text](https://example.com)  → named hyperlink
+#       https://example.com               → auto-linked bare URL
+#       Blank line (two newlines)         → paragraph break
+#       Single newline (use | block)      → line break
 #
+
+# ── Section descriptions ──────────────────────────────────────────────────────
+
+sections:
+  a:
+    description: ""
+  b:
+    description: "This section collects the core information describing the service, including its scope, structure, category, and scientific context."
+  c:
+    description: "The section asks for the responsibility of the Service and for person who can be contacted by the user and the administration office (responsiveness)."
+  d:
+    description: "This section collects all public links associated with the service, including the main website, terms of use, license information, and registry entries. These links ensure transparency, accessibility, and proper referencing of the service."
+  e:
+    description: |
+      This section collects information on KPI monitoring for your service. KPIs help demonstrate usage, impact, and sustainability and contribute to reporting within de.NBI and ELIXIR-DE.
+
+      Please note that KPI requirements depend on the selected service category. An overview of category-dependent KPIs that must or may be collected is provided in the [de.NBI KPI Compass.](https://www.denbi.de/images/Service/20210624_KPI_Cheat_Sheet_doi.pdf)
+  f:
+    description: >-
+      This section collects keywords and consent information that support the discoverability, impact assessment, and communication of your service. The provided information helps us identify service usage beyond formal citations and improve visibility in search
+      engines and outreach activities.
+  g:
+    description: ""
 
 # ── Section A — General Information ──────────────────────────────────────────
 
